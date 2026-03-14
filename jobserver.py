@@ -324,9 +324,10 @@ class JobHandler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     init_db()
+    port = int(os.environ.get("PORT", 3002))
     print("="*55)
     print("  🚀 Rolefindr Server v7  —  Supabase + Extension")
-    print(f"  http://localhost:{PORT}")
+    print(f"  http://0.0.0.0:{port}")
     print("="*55)
-    try: HTTPServer(("localhost",PORT),JobHandler).serve_forever()
+    try: HTTPServer(("0.0.0.0", port), JobHandler).serve_forever()
     except KeyboardInterrupt: print("\n👋 Stopped.")
