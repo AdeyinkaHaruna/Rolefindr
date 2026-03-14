@@ -264,6 +264,7 @@ class JobHandler(BaseHTTPRequestHandler):
         elif self.path == "/db/profiles": db_save_profiles(body.get("profiles",[])); self._respond(200,{"ok":True})
         elif self.path == "/db/timeline": self._respond(200,{"timeline": db_add_timeline(body["jobId"],body["type"],body.get("note",""),body.get("date",""))})
         elif self.path == "/db/import":   j,p = db_import(body); self._respond(200,{"ok":True,"jobs":j,"profiles":p})
+        elif self.path == "/api/claude":    self._handle_claude(body)
         elif self.path == "/save-job":    self._extension_save(body)
         else: self.send_response(404); self.end_headers()
 
@@ -294,6 +295,27 @@ class JobHandler(BaseHTTPRequestHandler):
         except Exception as e:
             import traceback; traceback.print_exc()
             self._respond(500, {"error":str(e),"jobs":[]})
+
+    def _handle_claude(self, body):
+        import urllib.request
+        api_key = ENV.get("ANTHROPIC_API_KEY", "")
+        if not api_key:
+            self._respond(500, {"error": "Missing ANTHROPIC_API_KEY"}); return
+        try:
+            req = urllib.request.Request(
+                "https://api.anthropic.com/v1/messages",
+                data=json.dumps(body).encode(),
+                headers={
+                    "Content-Type": "application/json",
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01"
+                },
+                method="POST"
+            )
+            with urllib.request.urlopen(req) as r:
+                self._respond(200, json.loads(r.read()))
+        except Exception as e:
+            self._respond(500, {"error": str(e)})
 
     def _extension_save(self, body):
         job = {
