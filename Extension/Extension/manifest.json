@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "JobPilot Saver",
+  "version": "1.0",
+  "description": "Save jobs from LinkedIn, Indeed, and any job site directly to JobPilot.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": ["http://localhost:3002/*", "https://*/*", "http://*/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Save to JobPilot"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.linkedin.com/jobs/*",
+        "https://www.indeed.com/*",
+        "https://www.ziprecruiter.com/*",
+        "https://www.glassdoor.com/*",
+        "https://jobs.lever.co/*",
+        "https://boards.greenhouse.io/*",
+        "https://jobs.ashbyhq.com/*",
+        "https://apply.workable.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16":  "icon.png",
+    "48":  "icon.png",
+    "128": "icon.png"
+  }
+}
