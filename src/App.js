@@ -1096,7 +1096,6 @@ ${resume}` }], "", 2000);
         <div style={{ background:"#2a1e0a", borderBottom:`1px solid #78350f`, color:"#fcd34d", padding:"9px 22px", fontSize:13 }}>
           ⚠️ {searchError}
         </div>
-        </div>
       )}
 
       {/* ── STATS ── */}
