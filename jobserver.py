@@ -17,6 +17,7 @@ PORT = 3002
 # Load from .env file manually (no dotenv needed)
 def load_env():
     env = {}
+    # First load from .env file if it exists (local development)
     env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
     try:
         with open(env_path) as f:
@@ -26,7 +27,12 @@ def load_env():
                     k, v = line.split("=", 1)
                     env[k.strip()] = v.strip()
     except FileNotFoundError:
-        print("  ⚠️  No .env file found")
+        pass
+    # Then override with actual system environment variables (Render/production)
+    for key in ["SUPABASE_URL", "SUPABASE_SERVICE_KEY", "ANTHROPIC_API_KEY"]:
+        val = os.environ.get(key)
+        if val:
+            env[key] = val
     return env
 
 ENV = load_env()
