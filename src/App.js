@@ -16,6 +16,26 @@ const LIGHT = {
 const PROFILE_COLORS = ["#FF8C55","#38bdf8","#e2b96e","#c4b5fd","#4ade80","#f472b6"];
 const PROFILE_ICONS  = ["📊","🔒","🏨","🎧","💼","🛠","📱","🧠","🎯","📦"];
 
+function pickIcon(title) {
+  const t = title.toLowerCase();
+  if (/product|owner|manager|pm\b/.test(t))        return "🎯";
+  if (/cyber|security|soc|infosec|hacker/.test(t))  return "🔒";
+  if (/market|seo|sem|ads|paid|brand/.test(t))      return "📊";
+  if (/customer|support|service|care|helpdesk/.test(t)) return "🎧";
+  if (/hotel|concierge|hospitality|front desk/.test(t)) return "🏨";
+  if (/engineer|developer|software|coding|devops/.test(t)) return "🛠";
+  if (/mobile|ios|android|app/.test(t))             return "📱";
+  if (/data|analyst|science|ml|ai|research/.test(t)) return "🧠";
+  if (/sales|account|revenue|business dev/.test(t)) return "💼";
+  if (/design|ux|ui|creative|graphic/.test(t))      return "🎨";
+  if (/finance|accounting|cfo|bookkeep/.test(t))    return "💰";
+  if (/hr|human|recruit|talent/.test(t))            return "👥";
+  if (/legal|law|compliance|attorney/.test(t))      return "⚖️";
+  if (/health|nurse|medical|clinical/.test(t))      return "🏥";
+  if (/teach|educat|instruct|tutor/.test(t))        return "📚";
+  return PROFILE_ICONS[Math.floor(Math.random() * PROFILE_ICONS.length)];
+}
+
 const STATUS_CONFIG = {
   New:       { color:"#fff", bg:"#16a34a", border:"#16a34a" },
   Saved:     { color:"#fff", bg:"#d97706", border:"#d97706" },
@@ -96,7 +116,7 @@ const salaryColor = (max, textSub = "#a0a0b8") => max >= 85000 ? "#4ade80" : max
 async function callClaude(messages, system = "", maxTokens = 1000) {
   const body = { model:"claude-sonnet-4-20250514", max_tokens:maxTokens, messages };
   if (system) body.system = system;
-  const res = await fetch(process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/claude` : "https://rolefindr.onrender.com/api/claude", {
+  const res = await fetch(process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/claude` : "http://localhost:3001/api/claude", {
     method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)
   });
   const data = await res.json();
@@ -127,7 +147,7 @@ async function parseResumeFile(file) {
               { type:"text", text:"Extract all text from this resume. Output ONLY the plain text." }
             ]}]
           };
-          const resp = await fetch(process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/claude` : "https://rolefindr.onrender.com/api/claude", {
+          const resp = await fetch(process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/claude` : "http://localhost:3001/api/claude", {
             method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)
           });
           const data = await resp.json();
@@ -371,7 +391,7 @@ export default function Rolefindr() {
   const TL_ICONS = { Applied:"📤", "Phone Screen":"📞", Interview:"🗓️", "Follow Up":"🔔", Offer:"🎉", Rejected:"❌", Note:"📝" };
 
   // ── DB helpers ────────────────────────────────────────────────────────────
-  const DB = process.env.REACT_APP_API_URL || "https://rolefindr.onrender.com";
+  const DB = process.env.REACT_APP_API_URL || "http://localhost:3002";
 
   const dbPost = (path, body) => fetch(`${DB}${path}`, {
     method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)
@@ -468,7 +488,7 @@ Return ONLY a JSON array, no markdown. Example: ["Title One","Title Two","Title 
       const p = {
         id: `p${Date.now()}`,
         title: newProfileTitle,
-        icon: PROFILE_ICONS[idx % PROFILE_ICONS.length],
+        icon: pickIcon(newProfileTitle),
         color: PROFILE_COLORS[idx % PROFILE_COLORS.length],
         remote: newProfileRemote,
         searchTerms: terms,
@@ -490,7 +510,7 @@ Return ONLY a JSON array, no markdown. Example: ["Title One","Title Two","Title 
   // ─── Job Search ───────────────────────────────────────────────────────────
   const fetchForProfile = async (profile, loc, tf) => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || "https://rolefindr.onrender.com"}/search`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:3002"}/search`, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
           search_term: profile.searchTerms[0] || profile.title,
@@ -534,7 +554,7 @@ Return ONLY a JSON array, no markdown. Example: ["Title One","Title Two","Title 
         status: statusOverridesRef.current[j.id] || "New",
       }));
     } catch {
-      setSearchError("Cannot connect to server. Please try again in a moment.");
+      setSearchError("Cannot connect to job server. Is jobserver.py running?");
       return [];
     }
   };
@@ -1061,10 +1081,21 @@ ${resume}` }], "", 2000);
         </div>
       </div>
 
-      {isSearching && <div style={{ height:3 }}><div className="scanbar" style={{ height:"100%", width:"100%" }} /></div>}
+      {isSearching && (
+        <div style={{ background:"linear-gradient(135deg,rgba(79,70,229,.08),rgba(99,102,241,.05))", borderBottom:`1px solid rgba(79,70,229,.2)`, padding:"10px 22px", display:"flex", alignItems:"center", gap:12 }}>
+          <div className="scanbar" style={{ width:32, height:3, borderRadius:2, flexShrink:0 }} />
+          <div style={{ fontSize:13, color:T.accentHi, fontWeight:500 }}>
+            {searchProgress || "Searching jobs…"}
+          </div>
+          <div style={{ fontSize:12, color:T.textMute, marginLeft:"auto" }}>
+            Searching multiple job boards — this takes 30–60 seconds
+          </div>
+        </div>
+      )}
       {searchError && (
         <div style={{ background:"#2a1e0a", borderBottom:`1px solid #78350f`, color:"#fcd34d", padding:"9px 22px", fontSize:13 }}>
-          ⚠️ {searchError} → Run: <code style={{ background:"#1a1206", padding:"1px 7px", borderRadius:4 }}>/usr/local/bin/python3 jobserver.py</code>
+          ⚠️ {searchError}
+        </div>
         </div>
       )}
 
@@ -1495,7 +1526,7 @@ ${resume}` }], "", 2000);
                     textAlign:"center", cursor:"pointer", fontSize:13, fontWeight:600 }}>
                     {uploadingResume===p.id ? "⚡ Uploading…" : p.resume ? "📎 Replace Resume" : "📎 Upload PDF, Word, or TXT"}
                   </div>
-                  <input type="file" accept=".pdf,.docx,.txt" style={{ display:"none" }}
+                  <input type="file" accept=".pdf,.docx,.doc,.txt" style={{ display:"none" }}
                     onChange={e => { if (e.target.files[0]) handleResumeUpload(e.target.files[0], p.id); }} />
                 </label>
                 <div style={{ fontSize:11, color:T.textMute, marginBottom:5, textAlign:"center" }}>— or paste below —</div>
