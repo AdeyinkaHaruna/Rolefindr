@@ -116,7 +116,9 @@ def parse_job(row, location):
 def do_scrape(search_term, location, hours_old, is_remote, results, include_google=True):
     all_jobs = []
     try:
-        params = dict(site_name=["linkedin","indeed","zip_recruiter","glassdoor"],
+        # Use only LinkedIn + Indeed on production — faster, avoids Render timeout
+        boards = ["linkedin", "indeed"]
+        params = dict(site_name=boards,
             search_term=search_term, location="" if is_remote else location,
             results_wanted=results, country_indeed="USA", linkedin_fetch_description=True)
         if hours_old: params["hours_old"] = hours_old
@@ -127,22 +129,6 @@ def do_scrape(search_term, location, hours_old, is_remote, results, include_goog
             all_jobs.extend(jobs)
             print(f"    ✅ Standard ({search_term[:20]}): {len(jobs)}")
     except Exception as e: print(f"    ⚠️  Standard: {e}")
-
-    if include_google:
-        try:
-            loc_part = f" near {location}" if location and not is_remote else ""
-            tp_map = {24:" since yesterday",72:" last 3 days",168:" this week",336:" last 2 weeks",504:" last 3 weeks",720:" this month"}
-            time_part = tp_map.get(hours_old, "")
-            params_g = dict(site_name=["google"], search_term=search_term,
-                google_search_term=f"{search_term} jobs{loc_part}{time_part}",
-                location="" if is_remote else location, results_wanted=results, country_indeed="USA")
-            if hours_old: params_g["hours_old"] = hours_old
-            df_g = scrape_jobs(**params_g)
-            if df_g is not None and not df_g.empty:
-                gjobs = [parse_job(row, location) for _, row in df_g.iterrows()]
-                all_jobs.extend(gjobs)
-                print(f"    ✅ Google ({search_term[:20]}): {len(gjobs)}")
-        except Exception as e: print(f"    ⚠️  Google: {e}")
     return all_jobs
 
 def dedupe(jobs):
@@ -286,15 +272,16 @@ class JobHandler(BaseHTTPRequestHandler):
             search_term = params.get("search_term","")
             search_terms= params.get("search_terms",[])
             time_filter = params.get("time_filter","week")
-            results_n   = params.get("results",15)
+            results_n   = params.get("results", 8)  # Reduced for Render timeout
             is_remote   = params.get("remote",False)
-            all_terms   = list(dict.fromkeys(t.strip() for t in [search_term]+search_terms if t.strip()))[:2]
+            # Only use top term on Render to avoid timeout
+            all_terms   = list(dict.fromkeys(t.strip() for t in [search_term]+search_terms if t.strip()))[:1]
             hours_map   = {"24h":24,"3d":72,"week":168,"2w":336,"3w":504,"month":720,"any":None}
             hours_old   = hours_map.get(time_filter,168)
             print(f"\n🔍 {all_terms} | {location} | {time_filter}")
             all_jobs = []
             for i, term in enumerate(all_terms):
-                all_jobs.extend(do_scrape(term,location,hours_old,is_remote,results_n,include_google=(i==0)))
+                all_jobs.extend(do_scrape(term,location,hours_old,is_remote,results_n,include_google=False))
             unique = dedupe(all_jobs); unique.sort(key=lambda x:x["daysAgo"])
             self._respond(200, {"jobs":unique,"total":len(unique)})
             print(f"  ✅ {len(unique)} unique ({len(all_jobs)} raw)")
