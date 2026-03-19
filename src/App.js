@@ -96,7 +96,7 @@ const salaryColor = (max, textSub = "#a0a0b8") => max >= 85000 ? "#4ade80" : max
 async function callClaude(messages, system = "", maxTokens = 1000) {
   const body = { model:"claude-sonnet-4-20250514", max_tokens:maxTokens, messages };
   if (system) body.system = system;
-  const res = await fetch("https://rolefindr.onrender.com/api/claude", {
+  const res = await fetch(process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/claude` : "https://rolefindr.onrender.com/api/claude", {
     method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)
   });
   const data = await res.json();
@@ -127,7 +127,7 @@ async function parseResumeFile(file) {
               { type:"text", text:"Extract all text from this resume. Output ONLY the plain text." }
             ]}]
           };
-          const resp = await fetch("https://rolefindr.onrender.com/api/claude", {
+          const resp = await fetch(process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/claude` : "https://rolefindr.onrender.com/api/claude", {
             method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)
           });
           const data = await resp.json();
@@ -371,7 +371,7 @@ export default function Rolefindr() {
   const TL_ICONS = { Applied:"📤", "Phone Screen":"📞", Interview:"🗓️", "Follow Up":"🔔", Offer:"🎉", Rejected:"❌", Note:"📝" };
 
   // ── DB helpers ────────────────────────────────────────────────────────────
-  const DB = "https://rolefindr.onrender.com";
+  const DB = process.env.REACT_APP_API_URL || "https://rolefindr.onrender.com";
 
   const dbPost = (path, body) => fetch(`${DB}${path}`, {
     method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)
@@ -490,7 +490,7 @@ Return ONLY a JSON array, no markdown. Example: ["Title One","Title Two","Title 
   // ─── Job Search ───────────────────────────────────────────────────────────
   const fetchForProfile = async (profile, loc, tf) => {
     try {
-      const res = await fetch("https://rolefindr.onrender.com/search", {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "https://rolefindr.onrender.com"}/search`, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
           search_term: profile.searchTerms[0] || profile.title,
@@ -1733,4 +1733,3 @@ ${resume}` }], "", 2000);
     </div>
   );
 }
-// Sat Mar 14 20:19:15 EDT 2026
