@@ -1,5 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { Document, Packer, Paragraph, TextRun, AlignmentType, LevelFormat } from "docx";
+import { createClient } from "@supabase/supabase-js";
+
+// ─── SUPABASE CLIENT ──────────────────────────────────────────────────────────
+const supabase = createClient(
+  process.env.REACT_APP_SUPABASE_URL,
+  process.env.REACT_APP_SUPABASE_ANON_KEY
+);
 
 // ─── THEMES ──────────────────────────────────────────────────────────────────
 const DARK = {
@@ -307,6 +314,188 @@ function InsightsCharts({ jobs, profiles, darkMode }) {
   return null; // canvases already rendered by parent
 }
 
+// ─── LANDING PAGE ─────────────────────────────────────────────────────────────
+function LandingPage({ onAuth, darkMode, setDarkMode }) {
+  const T = darkMode ? DARK : LIGHT;
+  return (
+    <div style={{ minHeight:"100vh", background:T.bg, color:T.text, fontFamily:"'DM Sans','Helvetica Neue',sans-serif", display:"flex", flexDirection:"column" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Space+Grotesk:wght@600;700&display=swap');
+        *{box-sizing:border-box;margin:0;padding:0}
+        .lbtn{transition:all .18s;cursor:pointer;border:none;outline:none}
+        .lbtn:hover{opacity:.88;transform:translateY(-2px)}
+        @keyframes fadein{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        .fade{animation:fadein .6s ease forwards}
+        .fade2{animation:fadein .6s ease .15s forwards;opacity:0}
+        .fade3{animation:fadein .6s ease .3s forwards;opacity:0}
+      `}</style>
+
+      {/* Nav */}
+      <div style={{ padding:"18px 40px", display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:`1px solid ${T.border}` }}>
+        <div style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:22, fontWeight:700 }}>
+          <span style={{ color:"#4f46e5" }}>ROLE</span><span style={{ color:T.text }}>FINDR</span>
+        </div>
+        <div style={{ display:"flex", gap:12, alignItems:"center" }}>
+          <button className="lbtn" onClick={() => setDarkMode(d => !d)}
+            style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:8, padding:"8px 12px", fontSize:16, color:T.textSub }}>
+            {darkMode ? "☀️" : "🌙"}
+          </button>
+          <button className="lbtn" onClick={() => onAuth("login")}
+            style={{ background:"transparent", border:`1px solid ${T.border}`, borderRadius:8, padding:"9px 20px", fontSize:14, fontWeight:600, color:T.text }}>
+            Sign In
+          </button>
+          <button className="lbtn" onClick={() => onAuth("signup")}
+            style={{ background:"linear-gradient(135deg,#4f46e5,#7c3aed)", border:"none", borderRadius:8, padding:"9px 20px", fontSize:14, fontWeight:700, color:"#fff", boxShadow:"0 4px 14px rgba(79,70,229,.4)" }}>
+            Get Started Free
+          </button>
+        </div>
+      </div>
+
+      {/* Hero */}
+      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"80px 24px", textAlign:"center" }}>
+        <div className="fade" style={{ display:"inline-block", background:"rgba(79,70,229,.1)", border:"1px solid rgba(79,70,229,.3)", borderRadius:20, padding:"6px 16px", fontSize:13, fontWeight:600, color:"#818cf8", marginBottom:24 }}>
+          AI-Powered Job Search
+        </div>
+        <h1 className="fade" style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:"clamp(36px,6vw,72px)", fontWeight:700, lineHeight:1.1, maxWidth:800, marginBottom:24 }}>
+          Find your next role<br /><span style={{ background:"linear-gradient(135deg,#4f46e5,#7c3aed,#06b6d4)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>faster with AI</span>
+        </h1>
+        <p className="fade2" style={{ fontSize:"clamp(16px,2vw,20px)", color:T.textSub, maxWidth:560, lineHeight:1.7, marginBottom:40 }}>
+          Search 5 job boards at once, get AI resume rewrites tailored to each job, generate cover letters in seconds, and track every application — all in one place.
+        </p>
+        <div className="fade3" style={{ display:"flex", gap:14, flexWrap:"wrap", justifyContent:"center" }}>
+          <button className="lbtn" onClick={() => onAuth("signup")}
+            style={{ background:"linear-gradient(135deg,#4f46e5,#7c3aed)", border:"none", borderRadius:10, padding:"14px 32px", fontSize:16, fontWeight:700, color:"#fff", boxShadow:"0 6px 24px rgba(79,70,229,.4)" }}>
+            Start for Free →
+          </button>
+          <button className="lbtn" onClick={() => onAuth("login")}
+            style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:10, padding:"14px 32px", fontSize:16, fontWeight:600, color:T.text }}>
+            Sign In
+          </button>
+        </div>
+
+        {/* Feature pills */}
+        <div className="fade3" style={{ display:"flex", gap:10, flexWrap:"wrap", justifyContent:"center", marginTop:48 }}>
+          {["🔍 5 Job Boards at Once","🤖 AI Resume Rewrite","✍️ Cover Letter Generator","📅 Application Timeline","🧩 Browser Extension","📊 Multi-Profile Search"].map(f => (
+            <div key={f} style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:20, padding:"8px 16px", fontSize:13, fontWeight:500, color:T.textSub }}>
+              {f}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div style={{ padding:"20px 40px", borderTop:`1px solid ${T.border}`, textAlign:"center", fontSize:13, color:T.textMute }}>
+        Rolefindr — Free to use · No credit card required
+      </div>
+    </div>
+  );
+}
+
+// ─── AUTH MODAL ───────────────────────────────────────────────────────────────
+function AuthModal({ mode, onClose, onSuccess, darkMode }) {
+  const T = darkMode ? DARK : LIGHT;
+  const [tab, setTab] = useState(mode); // "login" or "signup"
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const handleSubmit = async () => {
+    if (!email || !password) { setError("Please fill in all fields."); return; }
+    setLoading(true); setError(""); setSuccess("");
+    try {
+      if (tab === "signup") {
+        const { error: e } = await supabase.auth.signUp({ email, password });
+        if (e) throw e;
+        setSuccess("✅ Check your email to confirm your account, then sign in!");
+      } else {
+        const { error: e } = await supabase.auth.signInWithPassword({ email, password });
+        if (e) throw e;
+        onSuccess();
+      }
+    } catch (e) {
+      setError(e.message || "Something went wrong. Please try again.");
+    }
+    setLoading(false);
+  };
+
+  const handleGoogle = async () => {
+    setLoading(true); setError("");
+    const { error: e } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin }
+    });
+    if (e) { setError(e.message); setLoading(false); }
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.75)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
+      <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:16, padding:"32px 36px", width:"100%", maxWidth:420, position:"relative" }}>
+        <button onClick={onClose} style={{ position:"absolute", top:16, right:16, background:"none", border:"none", fontSize:22, color:T.textMute, cursor:"pointer" }}>×</button>
+
+        {/* Logo */}
+        <div style={{ textAlign:"center", marginBottom:24 }}>
+          <div style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:24, fontWeight:700, marginBottom:6 }}>
+            <span style={{ color:"#4f46e5" }}>ROLE</span><span style={{ color:T.text }}>FINDR</span>
+          </div>
+          <div style={{ fontSize:14, color:T.textMute }}>
+            {tab === "signup" ? "Create your free account" : "Welcome back"}
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display:"flex", background:T.bg, borderRadius:8, padding:4, marginBottom:24 }}>
+          {["login","signup"].map(t => (
+            <button key={t} onClick={() => { setTab(t); setError(""); setSuccess(""); }}
+              style={{ flex:1, padding:"8px", borderRadius:6, border:"none", cursor:"pointer", fontSize:14, fontWeight:600,
+                background: tab===t ? T.surface : "transparent",
+                color: tab===t ? T.text : T.textMute,
+                boxShadow: tab===t ? "0 1px 4px rgba(0,0,0,.15)" : "none" }}>
+              {t === "login" ? "Sign In" : "Sign Up"}
+            </button>
+          ))}
+        </div>
+
+        {/* Google button */}
+        <button onClick={handleGoogle} disabled={loading}
+          style={{ width:"100%", background:T.bg, border:`1px solid ${T.border}`, borderRadius:8, padding:"11px", fontSize:14, fontWeight:600, color:T.text, cursor:"pointer", marginBottom:16, display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
+          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#4285F4" d="M47.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h13.1c-.6 3-2.3 5.5-4.9 7.2v6h7.9c4.6-4.3 7.4-10.6 7.4-17.2z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.9-6c-2.1 1.4-4.8 2.3-8 2.3-6.1 0-11.3-4.1-13.2-9.7H2.7v6.2C6.7 42.8 14.8 48 24 48z"/><path fill="#FBBC05" d="M10.8 28.8c-.5-1.4-.7-2.8-.7-4.3s.3-3 .7-4.3v-6.2H2.7C1 17.3 0 20.5 0 24s1 6.7 2.7 9.8l8.1-5z"/><path fill="#EA4335" d="M24 9.5c3.4 0 6.5 1.2 8.9 3.5l6.6-6.6C35.9 2.5 30.5 0 24 0 14.8 0 6.7 5.2 2.7 13l8.1 6.2c1.9-5.6 7.1-9.7 13.2-9.7z"/></svg>
+          Continue with Google
+        </button>
+
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
+          <div style={{ flex:1, height:1, background:T.border }} />
+          <span style={{ fontSize:12, color:T.textMute }}>or</span>
+          <div style={{ flex:1, height:1, background:T.border }} />
+        </div>
+
+        {/* Email & Password */}
+        <div style={{ marginBottom:12 }}>
+          <label style={{ fontSize:12, fontWeight:600, color:T.textMute, display:"block", marginBottom:4 }}>EMAIL</label>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+            placeholder="you@example.com" onKeyDown={e => e.key==="Enter" && handleSubmit()}
+            style={{ width:"100%", background:T.bg, border:`1px solid ${T.border}`, borderRadius:8, padding:"10px 13px", color:T.text, fontSize:14, fontFamily:"inherit" }} />
+        </div>
+        <div style={{ marginBottom:20 }}>
+          <label style={{ fontSize:12, fontWeight:600, color:T.textMute, display:"block", marginBottom:4 }}>PASSWORD</label>
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+            placeholder="••••••••" onKeyDown={e => e.key==="Enter" && handleSubmit()}
+            style={{ width:"100%", background:T.bg, border:`1px solid ${T.border}`, borderRadius:8, padding:"10px 13px", color:T.text, fontSize:14, fontFamily:"inherit" }} />
+        </div>
+
+        {error && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.3)", borderRadius:7, padding:"9px 12px", fontSize:13, color:"#f87171", marginBottom:14 }}>{error}</div>}
+        {success && <div style={{ background:"rgba(74,222,128,.1)", border:"1px solid rgba(74,222,128,.3)", borderRadius:7, padding:"9px 12px", fontSize:13, color:"#4ade80", marginBottom:14 }}>{success}</div>}
+
+        <button onClick={handleSubmit} disabled={loading}
+          style={{ width:"100%", background:"linear-gradient(135deg,#4f46e5,#7c3aed)", border:"none", borderRadius:8, padding:"12px", fontSize:15, fontWeight:700, color:"#fff", cursor:"pointer", boxShadow:"0 4px 14px rgba(79,70,229,.4)" }}>
+          {loading ? "Please wait…" : tab === "login" ? "Sign In" : "Create Account"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function Rolefindr() {
   // ── Theme ─────────────────────────────────────────────────────────────────
@@ -314,6 +503,23 @@ export default function Rolefindr() {
     try { return localStorage.getItem("rf_theme") !== "light"; } catch { return true; }
   });
   const T = darkMode ? DARK : LIGHT;
+
+  // ── Auth state ────────────────────────────────────────────────────────────
+  const [user, setUser] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [showAuth, setShowAuth] = useState(null); // "login" | "signup" | null
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setAuthChecked(true);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) setShowAuth(null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
   // ── Core state ───────────────────────────────────────────────────────────
   const [profiles, setProfiles] = useState(() => {
     try { return JSON.parse(localStorage.getItem("rf_profiles")) || DEFAULT_PROFILES; } catch { return DEFAULT_PROFILES; }
@@ -963,6 +1169,23 @@ ${resume}` }], "", 2000);
   // ═══════════════════════════════════════════════════════════════════════════
   // RENDER
   // ═══════════════════════════════════════════════════════════════════════════
+
+  // Loading auth state
+  if (!authChecked) return (
+    <div style={{ minHeight:"100vh", background:DARK.bg, display:"flex", alignItems:"center", justifyContent:"center", color:"#818cf8", fontFamily:"'DM Sans',sans-serif", fontSize:16 }}>
+      <span style={{ animation:"pulse 1s infinite" }}>⚡</span>&nbsp; Loading Rolefindr…
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}`}</style>
+    </div>
+  );
+
+  // Not logged in — show landing page
+  if (!user) return (
+    <>
+      <LandingPage onAuth={mode => setShowAuth(mode)} darkMode={darkMode} setDarkMode={setDarkMode} />
+      {showAuth && <AuthModal mode={showAuth} darkMode={darkMode} onClose={() => setShowAuth(null)} onSuccess={() => setShowAuth(null)} />}
+    </>
+  );
+
   return (
     <div style={{ fontFamily:"'DM Sans','Helvetica Neue',sans-serif", background:T.bg, minHeight:"100vh", color:T.text, display:"flex", flexDirection:"column", fontSize:15 }}>
       <style>{`
@@ -1078,6 +1301,16 @@ ${resume}` }], "", 2000);
             background:T.surface, border:`1px solid ${T.border}`, borderRadius:8,
             padding:"9px 13px", fontSize:17, cursor:"pointer", color:T.textSub,
           }}>{darkMode ? "☀️" : "🌙"}</button>
+          <div style={{ display:"flex", alignItems:"center", gap:8, background:T.surface, border:`1px solid ${T.border}`, borderRadius:8, padding:"6px 12px" }}>
+            <div style={{ width:28, height:28, borderRadius:"50%", background:"linear-gradient(135deg,#4f46e5,#7c3aed)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, color:"#fff", flexShrink:0 }}>
+              {user?.email?.[0]?.toUpperCase() || "U"}
+            </div>
+            <span style={{ fontSize:12, color:T.textSub, maxWidth:120, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user?.email}</span>
+            <button className="btn" onClick={() => supabase.auth.signOut()}
+              style={{ background:"rgba(239,68,68,.1)", color:"#f87171", border:"1px solid rgba(239,68,68,.2)", borderRadius:6, padding:"4px 10px", fontSize:12, fontWeight:600 }}>
+              Sign out
+            </button>
+          </div>
         </div>
       </div>
 
