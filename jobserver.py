@@ -140,27 +140,27 @@ def dedupe(jobs):
 
 # ─── DB HELPERS ───────────────────────────────────────────────────────────────
 
-def db_upsert_jobs(jobs):
+def db_upsert_jobs(jobs, user_id=""):
     db = get_db()
     for job in jobs:
         try:
-            existing = db.table("jobs").select("status,note").eq("id", job["id"]).execute()
+            existing = db.table("jobs").select("status,note").eq("id", job["id"]).eq("user_id", user_id).execute()
             if existing.data:
                 job["status"] = existing.data[0]["status"]
                 db.table("jobs").update({
                     "data": job, "profile_id": job.get("profileId",""), "saved_at": datetime.now().isoformat()
-                }).eq("id", job["id"]).execute()
+                }).eq("id", job["id"]).eq("user_id", user_id).execute()
             else:
                 db.table("jobs").insert({
                     "id": job["id"], "profile_id": job.get("profileId",""),
-                    "data": job, "status": job.get("status","New"), "note": ""
+                    "data": job, "status": job.get("status","New"), "note": "", "user_id": user_id
                 }).execute()
         except Exception as e:
             print(f"    ⚠️  upsert error: {e}")
 
-def db_load_all_jobs():
+def db_load_all_jobs(user_id=""):
     db = get_db()
-    rows = db.table("jobs").select("data,status,note").order("saved_at", desc=True).execute()
+    rows = db.table("jobs").select("data,status,note").eq("user_id", user_id).order("saved_at", desc=True).execute()
     out = []
     for r in rows.data:
         try:
@@ -171,50 +171,50 @@ def db_load_all_jobs():
         except: pass
     return out
 
-def db_update_status(job_id, status):
-    get_db().table("jobs").update({"status": status}).eq("id", job_id).execute()
+def db_update_status(job_id, status, user_id=""):
+    get_db().table("jobs").update({"status": status}).eq("id", job_id).eq("user_id", user_id).execute()
 
-def db_update_note(job_id, note):
-    get_db().table("jobs").update({"note": note}).eq("id", job_id).execute()
+def db_update_note(job_id, note, user_id=""):
+    get_db().table("jobs").update({"note": note}).eq("id", job_id).eq("user_id", user_id).execute()
 
-def db_delete_job(job_id):
+def db_delete_job(job_id, user_id=""):
     db = get_db()
-    db.table("jobs").delete().eq("id", job_id).execute()
-    db.table("timeline").delete().eq("job_id", job_id).execute()
+    db.table("jobs").delete().eq("id", job_id).eq("user_id", user_id).execute()
+    db.table("timeline").delete().eq("job_id", job_id).eq("user_id", user_id).execute()
 
-def db_save_profiles(profiles):
+def db_save_profiles(profiles, user_id=""):
     db = get_db()
-    db.table("profiles").delete().neq("id", "___").execute()
+    db.table("profiles").delete().eq("user_id", user_id).execute()
     for p in profiles:
-        db.table("profiles").upsert({"id": p["id"], "data": p}).execute()
+        db.table("profiles").upsert({"id": f"{user_id}_{p['id']}", "data": p, "user_id": user_id}).execute()
 
-def db_load_profiles():
-    rows = get_db().table("profiles").select("data").execute()
+def db_load_profiles(user_id=""):
+    rows = get_db().table("profiles").select("data").eq("user_id", user_id).execute()
     return [r["data"] if isinstance(r["data"], dict) else json.loads(r["data"]) for r in rows.data]
 
-def db_add_timeline(job_id, etype, note, event_date):
+def db_add_timeline(job_id, etype, note, event_date, user_id=""):
     get_db().table("timeline").insert({
-        "job_id": job_id, "type": etype, "note": note, "event_date": event_date
+        "job_id": job_id, "type": etype, "note": note, "event_date": event_date, "user_id": user_id
     }).execute()
-    return db_get_timeline(job_id)
+    return db_get_timeline(job_id, user_id)
 
-def db_get_timeline(job_id):
-    rows = get_db().table("timeline").select("*").eq("job_id", job_id).order("created_at").execute()
+def db_get_timeline(job_id, user_id=""):
+    rows = get_db().table("timeline").select("*").eq("job_id", job_id).eq("user_id", user_id).order("created_at").execute()
     return rows.data
 
-def db_delete_timeline_event(ev_id):
-    get_db().table("timeline").delete().eq("id", ev_id).execute()
+def db_delete_timeline_event(ev_id, user_id=""):
+    get_db().table("timeline").delete().eq("id", ev_id).eq("user_id", user_id).execute()
 
-def db_export():
-    jobs = db_load_all_jobs()
-    profiles = db_load_profiles()
-    tl = get_db().table("timeline").select("*").order("created_at").execute().data
+def db_export(user_id=""):
+    jobs = db_load_all_jobs(user_id)
+    profiles = db_load_profiles(user_id)
+    tl = get_db().table("timeline").select("*").eq("user_id", user_id).order("created_at").execute().data
     return {"jobs": jobs, "profiles": profiles, "timeline": tl, "exported_at": datetime.now().isoformat()}
 
-def db_import(data):
+def db_import(data, user_id=""):
     jobs = data.get("jobs",[]); profiles = data.get("profiles",[]); tl = data.get("timeline",[])
-    if jobs: db_upsert_jobs(jobs)
-    if profiles: db_save_profiles(profiles)
+    if jobs: db_upsert_jobs(jobs, user_id)
+    if profiles: db_save_profiles(profiles, user_id)
     db = get_db()
     for ev in tl:
         try:
@@ -233,37 +233,40 @@ class JobHandler(BaseHTTPRequestHandler):
     def _cors(self):
         self.send_header("Access-Control-Allow-Origin","*")
         self.send_header("Access-Control-Allow-Methods","GET,POST,DELETE,OPTIONS")
-        self.send_header("Access-Control-Allow-Headers","Content-Type")
+        self.send_header("Access-Control-Allow-Headers","Content-Type,X-User-Id")
 
     def do_OPTIONS(self):
         self.send_response(204); self._cors(); self.end_headers()
 
     def do_GET(self):
-        if   self.path == "/db/jobs":               self._respond(200, {"jobs": db_load_all_jobs()})
-        elif self.path == "/db/profiles":            self._respond(200, {"profiles": db_load_profiles()})
-        elif self.path.startswith("/db/timeline/"): self._respond(200, {"timeline": db_get_timeline(self.path.split("/")[-1])})
-        elif self.path == "/db/export":             self._respond(200, db_export())
+        uid = self.headers.get("X-User-Id","")
+        if   self.path == "/db/jobs":               self._respond(200, {"jobs": db_load_all_jobs(uid)})
+        elif self.path == "/db/profiles":            self._respond(200, {"profiles": db_load_profiles(uid)})
+        elif self.path.startswith("/db/timeline/"): self._respond(200, {"timeline": db_get_timeline(self.path.split("/")[-1], uid)})
+        elif self.path == "/db/export":             self._respond(200, db_export(uid))
         elif self.path == "/ping":                  self._respond(200, {"ok": True})
         else: self.send_response(404); self.end_headers()
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length",0))
         body = json.loads(self.rfile.read(length)) if length else {}
+        uid = self.headers.get("X-User-Id","") or body.get("userId","")
         if   self.path == "/search":      self._search(body)
-        elif self.path == "/db/jobs":     self._respond(200, {"saved": len(body.get("jobs",[]))} if not db_upsert_jobs(body.get("jobs",[])) else {"saved":0})
-        elif self.path == "/db/status":   db_update_status(body["id"],body["status"]); self._respond(200,{"ok":True})
-        elif self.path == "/db/note":     db_update_note(body["id"],body["note"]); self._respond(200,{"ok":True})
-        elif self.path == "/db/profiles": db_save_profiles(body.get("profiles",[])); self._respond(200,{"ok":True})
-        elif self.path == "/db/timeline": self._respond(200,{"timeline": db_add_timeline(body["jobId"],body["type"],body.get("note",""),body.get("date",""))})
-        elif self.path == "/db/import":   j,p = db_import(body); self._respond(200,{"ok":True,"jobs":j,"profiles":p})
-        elif self.path == "/api/claude":    self._handle_claude(body)
+        elif self.path == "/db/jobs":     db_upsert_jobs(body.get("jobs",[]), uid); self._respond(200,{"saved":len(body.get("jobs",[]))})
+        elif self.path == "/db/status":   db_update_status(body["id"],body["status"],uid); self._respond(200,{"ok":True})
+        elif self.path == "/db/note":     db_update_note(body["id"],body["note"],uid); self._respond(200,{"ok":True})
+        elif self.path == "/db/profiles": db_save_profiles(body.get("profiles",[]),uid); self._respond(200,{"ok":True})
+        elif self.path == "/db/timeline": self._respond(200,{"timeline": db_add_timeline(body["jobId"],body["type"],body.get("note",""),body.get("date",""),uid)})
+        elif self.path == "/db/import":   db_import(body,uid); self._respond(200,{"ok":True})
+        elif self.path == "/api/claude":  self._handle_claude(body)
         elif self.path == "/save-job":    self._extension_save(body)
         else: self.send_response(404); self.end_headers()
 
     def do_DELETE(self):
+        uid = self.headers.get("X-User-Id","")
         parts = self.path.split("/")
-        if   self.path.startswith("/db/jobs/"):     db_delete_job(parts[-1]); self._respond(200,{"ok":True})
-        elif self.path.startswith("/db/timeline/"): db_delete_timeline_event(int(parts[-1])); self._respond(200,{"ok":True})
+        if   self.path.startswith("/db/jobs/"):     db_delete_job(parts[-1], uid); self._respond(200,{"ok":True})
+        elif self.path.startswith("/db/timeline/"): db_delete_timeline_event(int(parts[-1]), uid); self._respond(200,{"ok":True})
         else: self.send_response(404); self.end_headers()
 
     def _search(self, params):

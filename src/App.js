@@ -597,19 +597,27 @@ export default function Rolefindr() {
   const TL_ICONS = { Applied:"📤", "Phone Screen":"📞", Interview:"🗓️", "Follow Up":"🔔", Offer:"🎉", Rejected:"❌", Note:"📝" };
 
   // ── DB helpers ────────────────────────────────────────────────────────────
-  const DB = process.env.REACT_APP_API_URL || "http://localhost:3002";
+  const DB = process.env.REACT_APP_API_URL || "https://rolefindr.onrender.com";
+
+  const dbHeaders = () => ({
+    "Content-Type": "application/json",
+    "X-User-Id": user?.id || "",
+  });
 
   const dbPost = (path, body) => fetch(`${DB}${path}`, {
-    method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)
+    method:"POST", headers: dbHeaders(), body:JSON.stringify({ ...body, userId: user?.id || "" })
   }).catch(() => {});
 
-  const dbDelete = (path) => fetch(`${DB}${path}`, { method:"DELETE" }).catch(() => {});
+  const dbDelete = (path) => fetch(`${DB}${path}`, {
+    method:"DELETE", headers: dbHeaders()
+  }).catch(() => {});
 
   // ── Load persisted data from DB on first mount ────────────────────────────
   useEffect(() => {
+    if (!user) return;
     (async () => {
       try {
-        const r = await fetch(`${DB}/db/jobs`);
+        const r = await fetch(`${DB}/db/jobs`, { headers: { "X-User-Id": user.id } });
         if (r.ok) {
           const d = await r.json();
           if (d.jobs?.length) {
@@ -619,14 +627,14 @@ export default function Rolefindr() {
         }
       } catch {}
       try {
-        const r = await fetch(`${DB}/db/profiles`);
+        const r = await fetch(`${DB}/db/profiles`, { headers: { "X-User-Id": user.id } });
         if (r.ok) {
           const d = await r.json();
           if (d.profiles?.length) setProfiles(d.profiles);
         }
       } catch {}
     })();
-  }, []);
+  }, [user]);
 
   // ── Persist to localStorage — skip first render to avoid loops ───────────
   const mountedRef = useRef(false);
@@ -857,7 +865,7 @@ Return ONLY a JSON array, no markdown. Example: ["Title One","Title Two","Title 
   // ─── Timeline ─────────────────────────────────────────────────────────────
   const loadTimeline = async (jobId) => {
     try {
-      const r = await fetch(`${DB}/db/timeline/${jobId}`);
+      const r = await fetch(`${DB}/db/timeline/${jobId}`, { headers: { "X-User-Id": user?.id || "" } });
       const d = await r.json();
       setTimeline(prev => ({ ...prev, [jobId]: d.timeline || [] }));
     } catch {}
