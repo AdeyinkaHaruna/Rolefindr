@@ -116,7 +116,7 @@ const salaryColor = (max, textSub = "#a0a0b8") => max >= 85000 ? "#4ade80" : max
 async function callClaude(messages, system = "", maxTokens = 1000) {
   const body = { model:"claude-sonnet-4-20250514", max_tokens:maxTokens, messages };
   if (system) body.system = system;
-  const res = await fetch(process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/claude` : "http://localhost:3001/api/claude", {
+  const res = await fetch(process.env.REACT_APP_API_URL || "https://rolefindr.onrender.com/api/claude", {
     method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)
   });
   const data = await res.json();
@@ -147,7 +147,7 @@ async function parseResumeFile(file) {
               { type:"text", text:"Extract all text from this resume. Output ONLY the plain text." }
             ]}]
           };
-          const resp = await fetch(process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/claude` : "http://localhost:3001/api/claude", {
+          const resp = await fetch(process.env.REACT_APP_API_URL || "https://rolefindr.onrender.com/api/claude", {
             method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)
           });
           const data = await resp.json();
@@ -715,7 +715,7 @@ Return ONLY a JSON array, no markdown. Example: ["Title One","Title Two","Title 
       const reply = await callClaude([{ role:"user", content:msg }], system);
       setCoverLetter(reply);
       setClHistory([{ role:"user", content:msg }, { role:"assistant", content:reply }]);
-    } catch { setCoverLetter("Connection error. Check proxy server."); }
+    } catch { setCoverLetter("Connection error. Please try again in a moment."); }
     setIsGenerating(false);
   };
 
