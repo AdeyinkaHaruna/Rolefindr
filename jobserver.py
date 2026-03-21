@@ -304,6 +304,14 @@ class JobHandler(BaseHTTPRequestHandler):
             user_id = body.get("userId", "")
             return_url = body.get("returnUrl", "https://rolefindr.vercel.app")
             price_id = PRICE_YEARLY if plan == "yearly" else PRICE_MONTHLY
+
+            print(f"  💳 Checkout: plan={plan} price_id={price_id} stripe_key={'set' if stripe.api_key else 'MISSING'}")
+
+            if not stripe.api_key:
+                self._respond(500, {"error": "Stripe not configured"}); return
+            if not price_id:
+                self._respond(500, {"error": "Price ID not configured"}); return
+
             session = stripe.checkout.Session.create(
                 payment_method_types=["card"],
                 line_items=[{"price": price_id, "quantity": 1}],
