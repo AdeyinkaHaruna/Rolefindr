@@ -9,6 +9,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 import json, os, re, html
 from datetime import datetime
 from supabase import create_client
+import stripe
 
 # ─── CONFIG ───────────────────────────────────────────────────────────────────
 
@@ -38,6 +39,9 @@ def load_env():
 ENV = load_env()
 SUPABASE_URL = ENV.get("SUPABASE_URL", "")
 SUPABASE_KEY = ENV.get("SUPABASE_SERVICE_KEY", "")
+stripe.api_key = ENV.get("STRIPE_SECRET_KEY", "") or os.environ.get("STRIPE_SECRET_KEY", "")
+PRICE_MONTHLY = ENV.get("STRIPE_PRICE_MONTHLY", "") or os.environ.get("STRIPE_PRICE_MONTHLY", "")
+PRICE_YEARLY  = ENV.get("STRIPE_PRICE_YEARLY", "")  or os.environ.get("STRIPE_PRICE_YEARLY", "")
 
 # ─── SUPABASE CLIENT ──────────────────────────────────────────────────────────
 
@@ -258,6 +262,8 @@ class JobHandler(BaseHTTPRequestHandler):
         elif self.path == "/db/profiles": db_save_profiles(body.get("profiles",[]),uid); self._respond(200,{"ok":True})
         elif self.path == "/db/timeline": self._respond(200,{"timeline": db_add_timeline(body["jobId"],body["type"],body.get("note",""),body.get("date",""),uid)})
         elif self.path == "/db/import":   db_import(body,uid); self._respond(200,{"ok":True})
+        elif self.path == "/create-checkout": self._create_checkout(body)
+        elif self.path == "/webhook":          self._handle_webhook()
         elif self.path == "/api/claude":  self._handle_claude(body)
         elif self.path == "/save-job":    self._extension_save(body)
         else: self.send_response(404); self.end_headers()
@@ -291,6 +297,56 @@ class JobHandler(BaseHTTPRequestHandler):
         except Exception as e:
             import traceback; traceback.print_exc()
             self._respond(500, {"error":str(e),"jobs":[]})
+
+    def _create_checkout(self, body):
+        try:
+            plan = body.get("plan", "monthly")
+            user_id = body.get("userId", "")
+            return_url = body.get("returnUrl", "https://rolefindr.vercel.app")
+            price_id = PRICE_YEARLY if plan == "yearly" else PRICE_MONTHLY
+            session = stripe.checkout.Session.create(
+                payment_method_types=["card"],
+                line_items=[{"price": price_id, "quantity": 1}],
+                mode="subscription",
+                success_url=f"{return_url}?checkout=success",
+                cancel_url=return_url,
+                metadata={"user_id": user_id},
+                client_reference_id=user_id,
+            )
+            self._respond(200, {"url": session.url})
+        except Exception as e:
+            print(f"  ❌ Checkout error: {e}")
+            self._respond(500, {"error": str(e)})
+
+    def _handle_webhook(self):
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            payload = self.rfile.read(length)
+            event = json.loads(payload)
+            if event["type"] == "checkout.session.completed":
+                session = event["data"]["object"]
+                user_id = session.get("client_reference_id") or session.get("metadata", {}).get("user_id")
+                if user_id:
+                    db = get_db()
+                    db.table("subscriptions").upsert({
+                        "user_id": user_id,
+                        "is_pro": True,
+                        "plan": "pro",
+                        "stripe_customer_id": session.get("customer", ""),
+                        "stripe_subscription_id": session.get("subscription", ""),
+                    }).execute()
+                    print(f"  ✅ Pro activated for user {user_id}")
+            elif event["type"] in ["customer.subscription.deleted", "customer.subscription.paused"]:
+                sub = event["data"]["object"]
+                cust_id = sub.get("customer")
+                if cust_id:
+                    db = get_db()
+                    db.table("subscriptions").update({"is_pro": False, "plan": "free"}).eq("stripe_customer_id", cust_id).execute()
+                    print(f"  ℹ️ Pro cancelled for customer {cust_id}")
+            self._respond(200, {"ok": True})
+        except Exception as e:
+            print(f"  ❌ Webhook error: {e}")
+            self._respond(400, {"error": str(e)})
 
     def _handle_claude(self, body):
         import urllib.request

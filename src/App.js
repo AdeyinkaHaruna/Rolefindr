@@ -352,7 +352,7 @@ function LandingPage({ onAuth, darkMode, setDarkMode }) {
       </div>
 
       {/* Hero */}
-      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"80px 24px", textAlign:"center" }}>
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"80px 24px 60px", textAlign:"center" }}>
         <div className="fade" style={{ display:"inline-block", background:"rgba(79,70,229,.1)", border:"1px solid rgba(79,70,229,.3)", borderRadius:20, padding:"6px 16px", fontSize:13, fontWeight:600, color:"#818cf8", marginBottom:24 }}>
           AI-Powered Job Search
         </div>
@@ -362,7 +362,7 @@ function LandingPage({ onAuth, darkMode, setDarkMode }) {
         <p className="fade2" style={{ fontSize:"clamp(16px,2vw,20px)", color:T.textSub, maxWidth:560, lineHeight:1.7, marginBottom:40 }}>
           Search 5 job boards at once, get AI resume rewrites tailored to each job, generate cover letters in seconds, and track every application — all in one place.
         </p>
-        <div className="fade3" style={{ display:"flex", gap:14, flexWrap:"wrap", justifyContent:"center" }}>
+        <div className="fade3" style={{ display:"flex", gap:14, flexWrap:"wrap", justifyContent:"center", marginBottom:48 }}>
           <button className="lbtn" onClick={() => onAuth("signup")}
             style={{ background:"linear-gradient(135deg,#4f46e5,#7c3aed)", border:"none", borderRadius:10, padding:"14px 32px", fontSize:16, fontWeight:700, color:"#fff", boxShadow:"0 6px 24px rgba(79,70,229,.4)" }}>
             Start for Free →
@@ -374,7 +374,7 @@ function LandingPage({ onAuth, darkMode, setDarkMode }) {
         </div>
 
         {/* Feature pills */}
-        <div className="fade3" style={{ display:"flex", gap:10, flexWrap:"wrap", justifyContent:"center", marginTop:48 }}>
+        <div className="fade3" style={{ display:"flex", gap:10, flexWrap:"wrap", justifyContent:"center" }}>
           {["🔍 5 Job Boards at Once","🤖 AI Resume Rewrite","✍️ Cover Letter Generator","📅 Application Timeline","🧩 Browser Extension","📊 Multi-Profile Search"].map(f => (
             <div key={f} style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:20, padding:"8px 16px", fontSize:13, fontWeight:500, color:T.textSub }}>
               {f}
@@ -383,9 +383,55 @@ function LandingPage({ onAuth, darkMode, setDarkMode }) {
         </div>
       </div>
 
+      {/* Pricing */}
+      <div style={{ padding:"60px 24px", background:T.surface, borderTop:`1px solid ${T.border}`, borderBottom:`1px solid ${T.border}` }}>
+        <div style={{ textAlign:"center", marginBottom:40 }}>
+          <h2 style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:36, fontWeight:700, marginBottom:12 }}>Simple, honest pricing</h2>
+          <p style={{ color:T.textSub, fontSize:16 }}>Start free. Upgrade when you're ready.</p>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:20, maxWidth:700, margin:"0 auto" }}>
+
+          {/* Free */}
+          <div style={{ background:T.bg, border:`1px solid ${T.border}`, borderRadius:16, padding:"28px 24px" }}>
+            <div style={{ fontSize:14, fontWeight:600, color:T.textMute, marginBottom:8 }}>FREE FOREVER</div>
+            <div style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:42, fontWeight:700, marginBottom:4 }}>$0</div>
+            <div style={{ color:T.textMute, fontSize:14, marginBottom:24 }}>No credit card required</div>
+            {["Job search across 5 boards","Save & track applications","2 job profiles","5 free AI credits","Application timeline"].map(f => (
+              <div key={f} style={{ display:"flex", gap:8, alignItems:"center", marginBottom:10, fontSize:14, color:T.textSub }}>
+                <span style={{ color:"#4ade80" }}>✓</span> {f}
+              </div>
+            ))}
+            <button className="lbtn" onClick={() => onAuth("signup")}
+              style={{ width:"100%", marginTop:20, background:T.surface, border:`1px solid ${T.border}`, borderRadius:8, padding:"12px", fontSize:15, fontWeight:600, color:T.text }}>
+              Get Started Free
+            </button>
+          </div>
+
+          {/* Pro */}
+          <div style={{ background:"linear-gradient(135deg,rgba(79,70,229,.08),rgba(124,58,237,.05))", border:`2px solid #4f46e5`, borderRadius:16, padding:"28px 24px", position:"relative" }}>
+            <div style={{ position:"absolute", top:-12, left:"50%", transform:"translateX(-50%)", background:"linear-gradient(135deg,#4f46e5,#7c3aed)", color:"#fff", fontSize:12, fontWeight:700, padding:"4px 14px", borderRadius:12, whiteSpace:"nowrap" }}>MOST POPULAR</div>
+            <div style={{ fontSize:14, fontWeight:600, color:"#818cf8", marginBottom:8 }}>PRO</div>
+            <div style={{ display:"flex", alignItems:"baseline", gap:8, marginBottom:4 }}>
+              <span style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:42, fontWeight:700 }}>$12</span>
+              <span style={{ color:T.textMute, fontSize:14 }}>/month</span>
+            </div>
+            <div style={{ color:"#4ade80", fontSize:13, fontWeight:600, marginBottom:24 }}>or $99/year — save 31%</div>
+            {["Everything in Free","Unlimited AI resume rewrites","Unlimited cover letters","Unlimited resume fit analysis","Unlimited job profiles","Priority support"].map(f => (
+              <div key={f} style={{ display:"flex", gap:8, alignItems:"center", marginBottom:10, fontSize:14, color:T.textSub }}>
+                <span style={{ color:"#818cf8" }}>✓</span> {f}
+              </div>
+            ))}
+            <button className="lbtn" onClick={() => onAuth("signup")}
+              style={{ width:"100%", marginTop:20, background:"linear-gradient(135deg,#4f46e5,#7c3aed)", border:"none", borderRadius:8, padding:"12px", fontSize:15, fontWeight:700, color:"#fff", boxShadow:"0 4px 14px rgba(79,70,229,.4)" }}>
+              Start Free Trial
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Footer */}
-      <div style={{ padding:"20px 40px", borderTop:`1px solid ${T.border}`, textAlign:"center", fontSize:13, color:T.textMute }}>
-        Rolefindr — Free to use · No credit card required
+      <div style={{ padding:"20px 40px", textAlign:"center", fontSize:13, color:T.textMute }}>
+        Rolefindr — Free to use · No credit card required · Cancel anytime
       </div>
     </div>
   );
@@ -496,6 +542,74 @@ function AuthModal({ mode, onClose, onSuccess, darkMode }) {
   );
 }
 
+// ─── PAYWALL MODAL ───────────────────────────────────────────────────────────
+function PaywallModal({ onClose, darkMode, userId }) {
+  const T = darkMode ? DARK : LIGHT;
+  const [loading, setLoading] = useState(null);
+  const DB = process.env.REACT_APP_API_URL || "https://rolefindr.onrender.com";
+
+  const checkout = async (plan) => {
+    setLoading(plan);
+    try {
+      const r = await fetch(`${DB}/create-checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan, userId, returnUrl: window.location.href }),
+      });
+      const d = await r.json();
+      if (d.url) window.location.href = d.url;
+      else throw new Error("No checkout URL");
+    } catch {
+      alert("Could not start checkout. Please try again.");
+    }
+    setLoading(null);
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.8)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
+      <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:20, padding:"36px 32px", width:"100%", maxWidth:460, position:"relative", textAlign:"center" }}>
+        <button onClick={onClose} style={{ position:"absolute", top:16, right:16, background:"none", border:"none", fontSize:22, color:T.textMute, cursor:"pointer" }}>×</button>
+
+        <div style={{ fontSize:40, marginBottom:12 }}>⚡</div>
+        <h2 style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:24, fontWeight:700, marginBottom:8, color:T.text }}>You've used your 5 free AI credits</h2>
+        <p style={{ color:T.textSub, fontSize:15, lineHeight:1.6, marginBottom:28 }}>
+          Upgrade to Pro for unlimited AI resume rewrites, cover letters, and resume fit analysis.
+        </p>
+
+        {/* Plans */}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:24 }}>
+          {/* Monthly */}
+          <div style={{ background:T.bg, border:`1px solid ${T.border}`, borderRadius:12, padding:"20px 16px" }}>
+            <div style={{ fontSize:13, fontWeight:600, color:T.textMute, marginBottom:6 }}>MONTHLY</div>
+            <div style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:32, fontWeight:700, color:T.text }}>$12</div>
+            <div style={{ fontSize:13, color:T.textMute, marginBottom:16 }}>per month</div>
+            <button onClick={() => checkout("monthly")} disabled={loading === "monthly"}
+              style={{ width:"100%", background:T.accent, color:"#fff", border:"none", borderRadius:8, padding:"10px", fontSize:14, fontWeight:700, cursor:"pointer" }}>
+              {loading === "monthly" ? "Loading…" : "Get Pro"}
+            </button>
+          </div>
+
+          {/* Yearly — highlighted */}
+          <div style={{ background:"linear-gradient(135deg,rgba(79,70,229,.12),rgba(124,58,237,.08))", border:`2px solid ${T.accent}`, borderRadius:12, padding:"20px 16px", position:"relative" }}>
+            <div style={{ position:"absolute", top:-10, left:"50%", transform:"translateX(-50%)", background:"linear-gradient(135deg,#4f46e5,#7c3aed)", color:"#fff", fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:10 }}>BEST VALUE</div>
+            <div style={{ fontSize:13, fontWeight:600, color:T.accentHi, marginBottom:6 }}>YEARLY</div>
+            <div style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:32, fontWeight:700, color:T.text }}>$99</div>
+            <div style={{ fontSize:13, color:T.textMute, marginBottom:16 }}>per year <span style={{ color:"#4ade80", fontWeight:600 }}>save 31%</span></div>
+            <button onClick={() => checkout("yearly")} disabled={loading === "yearly"}
+              style={{ width:"100%", background:"linear-gradient(135deg,#4f46e5,#7c3aed)", color:"#fff", border:"none", borderRadius:8, padding:"10px", fontSize:14, fontWeight:700, cursor:"pointer", boxShadow:"0 4px 14px rgba(79,70,229,.4)" }}>
+              {loading === "yearly" ? "Loading…" : "Get Pro"}
+            </button>
+          </div>
+        </div>
+
+        <div style={{ fontSize:13, color:T.textMute }}>
+          ✅ Unlimited AI features &nbsp;·&nbsp; ✅ Unlimited profiles &nbsp;·&nbsp; ✅ Cancel anytime
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function Rolefindr() {
   // ── Theme ─────────────────────────────────────────────────────────────────
@@ -507,16 +621,50 @@ export default function Rolefindr() {
   // ── Auth state ────────────────────────────────────────────────────────────
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [showAuth, setShowAuth] = useState(null); // "login" | "signup" | null
+  const [showAuth, setShowAuth] = useState(null);
+
+  // ── Subscription state ────────────────────────────────────────────────────
+  const [isPro, setIsPro] = useState(false);
+  const [aiUsesLeft, setAiUsesLeft] = useState(5);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const FREE_AI_USES = 5;
+
+  const loadSubscription = async (userId) => {
+    try {
+      const { data } = await supabase.from("subscriptions").select("*").eq("user_id", userId).single();
+      if (data) {
+        setIsPro(data.is_pro || false);
+        setAiUsesLeft(Math.max(0, FREE_AI_USES - (data.ai_uses || 0)));
+      } else {
+        // First time user — create subscription record
+        await supabase.from("subscriptions").insert({ user_id: userId, is_pro: false, ai_uses: 0 });
+        setIsPro(false); setAiUsesLeft(FREE_AI_USES);
+      }
+    } catch { setIsPro(false); setAiUsesLeft(FREE_AI_USES); }
+  };
+
+  const consumeAiUse = async () => {
+    if (isPro) return true; // Pro users unlimited
+    if (aiUsesLeft <= 0) { setShowPaywall(true); return false; }
+    try {
+      const { data } = await supabase.from("subscriptions").select("ai_uses").eq("user_id", user.id).single();
+      const newUses = (data?.ai_uses || 0) + 1;
+      await supabase.from("subscriptions").update({ ai_uses: newUses }).eq("user_id", user.id);
+      setAiUsesLeft(Math.max(0, FREE_AI_USES - newUses));
+      if (FREE_AI_USES - newUses <= 0) setShowPaywall(true);
+    } catch {}
+    return true;
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setAuthChecked(true);
+      if (session?.user) loadSubscription(session.user.id);
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-      if (session?.user) setShowAuth(null);
+      if (session?.user) { setShowAuth(null); loadSubscription(session.user.id); }
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -920,6 +1068,7 @@ Return ONLY a JSON array, no markdown. Example: ["Title One","Title Two","Title 
 
   // ─── Cover letter ─────────────────────────────────────────────────────────
   const generateCoverLetter = async (job) => {
+    if (!await consumeAiUse()) return;
     setShowCoverLetter(true); setIsGenerating(true); setCoverLetter(""); setClHistory([]);
     const profile = profileOf(job);
     const resumeCtx = profile?.resume ? `\nMy resume:\n${profile.resume.slice(0,1500)}` : "";
@@ -949,6 +1098,7 @@ Return ONLY a JSON array, no markdown. Example: ["Title One","Title Two","Title 
 
   // ─── Resume analysis ──────────────────────────────────────────────────────
   const runQuickAnalysis = async (job) => {
+    if (!await consumeAiUse()) return;
     const profile = profileOf(job);
     if (!profile?.resume) { showNotif("Add a resume to this profile in the Resume tab first.", "error"); return; }
     setIsQuickAnalyzing(true); setQuickAnalysis(null);
@@ -976,6 +1126,7 @@ Format your response exactly like this:
   };
 
   const runFullAnalysis = async () => {
+    if (!await consumeAiUse()) return;
     if (!selectedJob) { showNotif("Select a job from the Jobs tab first.", "error"); return; }
     // Always derive resume from the selected job's profile — never use stale resumeText
     const profile = profileOf(selectedJob);
@@ -1024,6 +1175,7 @@ After: [rewritten to match this job]` }], "", 1500);
 
   // ─── Rewrite Resume ───────────────────────────────────────────────────────
   const rewriteResume = async (job) => {
+    if (!await consumeAiUse()) return;
     const profile = profileOf(job);
     const resume = profile?.resume || resumeText.trim();
     if (!resume) { showNotif("Add a resume to this profile first.", "error"); return; }
@@ -1194,6 +1346,13 @@ ${resume}` }], "", 2000);
     </>
   );
 
+  // Check for Stripe success redirect
+  if (window.location.search.includes("checkout=success")) {
+    loadSubscription(user.id);
+    window.history.replaceState({}, "", window.location.pathname);
+    showNotif("🎉 Welcome to Pro! All AI features are now unlimited.");
+  }
+
   return (
     <div style={{ fontFamily:"'DM Sans','Helvetica Neue',sans-serif", background:T.bg, minHeight:"100vh", color:T.text, display:"flex", flexDirection:"column", fontSize:15 }}>
       <style>{`
@@ -1232,6 +1391,9 @@ ${resume}` }], "", 2000);
           {notification.msg}
         </div>
       )}
+
+      {/* PAYWALL MODAL */}
+      {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} darkMode={darkMode} userId={user?.id} />}
 
       {/* APPLY MODAL */}
       {showApplyConfirm && (
@@ -1310,6 +1472,17 @@ ${resume}` }], "", 2000);
             padding:"9px 13px", fontSize:17, cursor:"pointer", color:T.textSub,
           }}>{darkMode ? "☀️" : "🌙"}</button>
           <div style={{ display:"flex", alignItems:"center", gap:8, background:T.surface, border:`1px solid ${T.border}`, borderRadius:8, padding:"6px 12px" }}>
+            {!isPro && (
+              <div title="Free AI credits remaining" onClick={() => setShowPaywall(true)}
+                style={{ background: aiUsesLeft > 0 ? "rgba(79,70,229,.15)" : "rgba(239,68,68,.15)", color: aiUsesLeft > 0 ? T.accentHi : "#f87171", borderRadius:6, padding:"3px 8px", fontSize:12, fontWeight:700, cursor:"pointer" }}>
+                ⚡ {aiUsesLeft} AI left
+              </div>
+            )}
+            {isPro && (
+              <div style={{ background:"rgba(74,222,128,.15)", color:"#4ade80", borderRadius:6, padding:"3px 8px", fontSize:12, fontWeight:700 }}>
+                ✨ Pro
+              </div>
+            )}
             <div style={{ width:28, height:28, borderRadius:"50%", background:"linear-gradient(135deg,#4f46e5,#7c3aed)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, color:"#fff", flexShrink:0 }}>
               {user?.email?.[0]?.toUpperCase() || "U"}
             </div>
