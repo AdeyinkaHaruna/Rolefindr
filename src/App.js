@@ -1473,14 +1473,19 @@ ${resume}` }], "", 2000);
           }}>{darkMode ? "☀️" : "🌙"}</button>
           <div style={{ display:"flex", alignItems:"center", gap:8, background:T.surface, border:`1px solid ${T.border}`, borderRadius:8, padding:"6px 12px" }}>
             {!isPro && (
-              <div title="Free AI credits remaining" onClick={() => setShowPaywall(true)}
-                style={{ background: aiUsesLeft > 0 ? "rgba(79,70,229,.15)" : "rgba(239,68,68,.15)", color: aiUsesLeft > 0 ? T.accentHi : "#f87171", borderRadius:6, padding:"3px 8px", fontSize:12, fontWeight:700, cursor:"pointer" }}>
-                ⚡ {aiUsesLeft} AI left
+              <div title="Free AI credits remaining — click to upgrade" onClick={() => setShowPaywall(true)}
+                style={{ display:"flex", alignItems:"center", gap:6, background: aiUsesLeft > 0 ? "linear-gradient(135deg,rgba(79,70,229,.2),rgba(99,102,241,.15))" : "rgba(239,68,68,.15)",
+                  color: aiUsesLeft > 0 ? "#818cf8" : "#f87171",
+                  border: `1px solid ${aiUsesLeft > 0 ? "rgba(79,70,229,.4)" : "rgba(239,68,68,.4)"}`,
+                  borderRadius:8, padding:"6px 12px", fontSize:13, fontWeight:700, cursor:"pointer" }}>
+                <span style={{ fontSize:15 }}>⚡</span>
+                <span>{aiUsesLeft} free AI {aiUsesLeft === 1 ? "use" : "uses"} left</span>
+                {aiUsesLeft <= 2 && <span style={{ background:"#f87171", color:"#fff", borderRadius:4, padding:"1px 6px", fontSize:11 }}>Upgrade</span>}
               </div>
             )}
             {isPro && (
-              <div style={{ background:"rgba(74,222,128,.15)", color:"#4ade80", borderRadius:6, padding:"3px 8px", fontSize:12, fontWeight:700 }}>
-                ✨ Pro
+              <div style={{ display:"flex", alignItems:"center", gap:6, background:"rgba(74,222,128,.15)", color:"#4ade80", border:"1px solid rgba(74,222,128,.3)", borderRadius:8, padding:"6px 12px", fontSize:13, fontWeight:700 }}>
+                ✨ Pro — Unlimited AI
               </div>
             )}
             <div style={{ width:28, height:28, borderRadius:"50%", background:"linear-gradient(135deg,#4f46e5,#7c3aed)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, color:"#fff", flexShrink:0 }}>
