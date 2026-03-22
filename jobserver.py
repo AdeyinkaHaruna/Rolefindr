@@ -331,9 +331,11 @@ class JobHandler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", 0))
             payload = self.rfile.read(length)
             event = json.loads(payload)
+            print(f"  🔔 Webhook: {event.get('type')}")
             if event["type"] == "checkout.session.completed":
                 session = event["data"]["object"]
                 user_id = session.get("client_reference_id") or session.get("metadata", {}).get("user_id")
+                print(f"  💳 Activating Pro for user: {user_id}")
                 if user_id:
                     db = get_db()
                     db.table("subscriptions").upsert({
@@ -343,18 +345,18 @@ class JobHandler(BaseHTTPRequestHandler):
                         "stripe_customer_id": session.get("customer", ""),
                         "stripe_subscription_id": session.get("subscription", ""),
                     }).execute()
-                    print(f"  ✅ Pro activated for user {user_id}")
+                    print(f"  ✅ Pro activated for {user_id}")
             elif event["type"] in ["customer.subscription.deleted", "customer.subscription.paused"]:
                 sub = event["data"]["object"]
                 cust_id = sub.get("customer")
                 if cust_id:
                     db = get_db()
                     db.table("subscriptions").update({"is_pro": False, "plan": "free"}).eq("stripe_customer_id", cust_id).execute()
-                    print(f"  ℹ️ Pro cancelled for customer {cust_id}")
             self._respond(200, {"ok": True})
         except Exception as e:
             print(f"  ❌ Webhook error: {e}")
-            self._respond(400, {"error": str(e)})
+            import traceback; traceback.print_exc()
+            self._respond(200, {"ok": True})  # Always return 200 to Stripe
 
     def _handle_claude(self, body):
         import urllib.request
