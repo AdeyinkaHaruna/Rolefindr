@@ -123,19 +123,23 @@ const salaryColor = (max, textSub = "#a0a0b8") => max >= 85000 ? "#4ade80" : max
 async function callClaude(messages, system = "", maxTokens = 1000) {
   const body = { model:"claude-sonnet-4-20250514", max_tokens:maxTokens, messages };
   if (system) body.system = system;
-  // Call Anthropic directly from frontend — faster, avoids Render timeout
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method:"POST",
-    headers:{
-      "Content-Type":"application/json",
-      "x-api-key": process.env.REACT_APP_ANTHROPIC_KEY,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-calls": "true"
-    },
-    body:JSON.stringify(body)
-  });
-  const data = await res.json();
-  return data.content?.map(c => c.text || "").join("") || "";
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 55000); // 55 second timeout
+  try {
+    const res = await fetch("https://rolefindr.onrender.com/api/claude", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(body),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    const data = await res.json();
+    return data.content?.map(c => c.text || "").join("") || "";
+  } catch(e) {
+    clearTimeout(timeout);
+    if (e.name === "AbortError") throw new Error("Request timed out. Please try again.");
+    throw e;
+  }
 }
 
 // ─── RESUME FILE PARSER ───────────────────────────────────────────────────────
@@ -162,13 +166,8 @@ async function parseResumeFile(file) {
               { type:"text", text:"Extract all text from this resume. Output ONLY the plain text." }
             ]}]
           };
-          const resp = await fetch("https://api.anthropic.com/v1/messages", {
-            method:"POST", headers:{
-              "Content-Type":"application/json",
-              "x-api-key": process.env.REACT_APP_ANTHROPIC_KEY,
-              "anthropic-version": "2023-06-01",
-              "anthropic-dangerous-direct-browser-calls": "true"
-            }, body:JSON.stringify(body)
+          const resp = await fetch("https://rolefindr.onrender.com/api/claude", {
+            method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)
           });
           const data = await resp.json();
           res(data.content?.map(c => c.text || "").join("") || "");
@@ -929,7 +928,7 @@ Return ONLY a JSON array, no markdown. Example: ["Title One","Title Two","Title 
         status: statusOverridesRef.current[j.id] || "New",
       }));
     } catch {
-      setSearchError("Cannot connect to server. Please try again in a moment.");
+      setSearchError("Cannot connect to job server. Is jobserver.py running?");
       return [];
     }
   };
@@ -1211,7 +1210,7 @@ JOB DESCRIPTION:
 ${job.description}
 
 ORIGINAL RESUME:
-${resume}` }], "", 2000);
+${resume}` }], "", 1200);
       setRewrittenResume({ text: reply, jobTitle: job.title, company: job.company, jobId: job.id });
       showNotif("✅ Resume rewritten! Ready to download.");
     } catch { showNotif("Rewrite failed. Check connection.", "error"); }
