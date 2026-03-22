@@ -929,7 +929,7 @@ Return ONLY a JSON array, no markdown. Example: ["Title One","Title Two","Title 
         status: statusOverridesRef.current[j.id] || "New",
       }));
     } catch {
-      setSearchError("Cannot connect to job server. Is jobserver.py running?");
+      setSearchError("Cannot connect to server. Please try again in a moment.");
       return [];
     }
   };
