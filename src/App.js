@@ -123,8 +123,16 @@ const salaryColor = (max, textSub = "#a0a0b8") => max >= 85000 ? "#4ade80" : max
 async function callClaude(messages, system = "", maxTokens = 1000) {
   const body = { model:"claude-sonnet-4-20250514", max_tokens:maxTokens, messages };
   if (system) body.system = system;
-  const res = await fetch(process.env.REACT_APP_API_URL || "https://rolefindr.onrender.com/api/claude", {
-    method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)
+  // Call Anthropic directly from frontend — faster, avoids Render timeout
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "x-api-key": process.env.REACT_APP_ANTHROPIC_KEY,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-calls": "true"
+    },
+    body:JSON.stringify(body)
   });
   const data = await res.json();
   return data.content?.map(c => c.text || "").join("") || "";
@@ -154,8 +162,13 @@ async function parseResumeFile(file) {
               { type:"text", text:"Extract all text from this resume. Output ONLY the plain text." }
             ]}]
           };
-          const resp = await fetch(process.env.REACT_APP_API_URL || "https://rolefindr.onrender.com/api/claude", {
-            method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)
+          const resp = await fetch("https://api.anthropic.com/v1/messages", {
+            method:"POST", headers:{
+              "Content-Type":"application/json",
+              "x-api-key": process.env.REACT_APP_ANTHROPIC_KEY,
+              "anthropic-version": "2023-06-01",
+              "anthropic-dangerous-direct-browser-calls": "true"
+            }, body:JSON.stringify(body)
           });
           const data = await resp.json();
           res(data.content?.map(c => c.text || "").join("") || "");
