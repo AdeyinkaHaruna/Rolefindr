@@ -928,7 +928,7 @@ Return ONLY a JSON array, no markdown. Example: ["Title One","Title Two","Title 
         status: statusOverridesRef.current[j.id] || "New",
       }));
     } catch {
-      setSearchError("Cannot connect to server. Please try again in a moment.");
+      setSearchError("Some profiles couldn't connect. Showing available results.");
       return [];
     }
   };
@@ -1396,11 +1396,15 @@ ${resume}` }], "", 1200);
 
       {/* NOTIFICATION */}
       {notification && (
-        <div className="fade" style={{ position:"fixed", top:16, right:16, zIndex:9999, padding:"11px 18px", borderRadius:9, fontSize:14, fontWeight:500, boxShadow:"0 8px 28px rgba(0,0,0,.5)",
+        <div className="fade" style={{ position:"fixed", top:20, right:20, zIndex:9999,
+          padding:"14px 22px", borderRadius:12, fontSize:15, fontWeight:700,
+          boxShadow:"0 12px 40px rgba(0,0,0,.5)", maxWidth:360,
           background:notification.type==="error"?"#2a1515":"#152a1e",
-          border:`1px solid ${notification.type==="error"?"#ef4444":"#22c55e"}`,
-          color:notification.type==="error"?"#fca5a5":"#86efac" }}>
-          {notification.msg}
+          border:`2px solid ${notification.type==="error"?"#ef4444":"#22c55e"}`,
+          color:notification.type==="error"?"#fca5a5":"#86efac",
+          display:"flex", alignItems:"center", gap:10 }}>
+          <span style={{ fontSize:18 }}>{notification.type==="error"?"❌":"✅"}</span>
+          <span>{notification.msg}</span>
         </div>
       )}
 
@@ -1513,19 +1517,19 @@ ${resume}` }], "", 1200);
       </div>
 
       {isSearching && (
-        <div style={{ background:"linear-gradient(135deg,rgba(79,70,229,.08),rgba(99,102,241,.05))", borderBottom:`1px solid rgba(79,70,229,.2)`, padding:"10px 22px", display:"flex", alignItems:"center", gap:12 }}>
-          <div className="scanbar" style={{ width:32, height:3, borderRadius:2, flexShrink:0 }} />
-          <div style={{ fontSize:13, color:T.accentHi, fontWeight:500 }}>
+        <div style={{ background:"linear-gradient(135deg,rgba(79,70,229,.15),rgba(99,102,241,.1))", borderBottom:`2px solid rgba(79,70,229,.4)`, padding:"13px 22px", display:"flex", alignItems:"center", gap:12 }}>
+          <div className="scanbar" style={{ width:40, height:4, borderRadius:2, flexShrink:0 }} />
+          <div style={{ fontSize:14, color:"#818cf8", fontWeight:700 }}>
             {searchProgress || "Searching jobs…"}
           </div>
-          <div style={{ fontSize:12, color:T.textMute, marginLeft:"auto" }}>
-            Searching multiple job boards — this takes 30–60 seconds
+          <div style={{ fontSize:13, color:T.textSub, marginLeft:"auto", fontWeight:500 }}>
+            ⏱ Searching multiple job boards — this takes 30–60 seconds
           </div>
         </div>
       )}
       {searchError && (
-        <div style={{ background:"#2a1e0a", borderBottom:`1px solid #78350f`, color:"#fcd34d", padding:"9px 22px", fontSize:13 }}>
-          ⚠️ {searchError}
+        <div style={{ background:"#2a1e0a", borderBottom:`1px solid #78350f`, color:"#fcd34d", padding:"9px 22px", fontSize:13, fontWeight:600 }}>
+          ⚠️ Some profiles couldn't load. Jobs shown are from successful searches.
         </div>
       )}
 
