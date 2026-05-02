@@ -124,7 +124,7 @@ async function callClaude(messages, system = "", maxTokens = 1000) {
   const body = { model:"claude-sonnet-4-20250514", max_tokens:maxTokens, messages };
   if (system) body.system = system;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 55000); // 55 second timeout
+ const timeout = setTimeout(() => controller.abort(), 90000);
   try {
     const res = await fetch("https://rolefindr.onrender.com/api/claude", {
       method:"POST",
