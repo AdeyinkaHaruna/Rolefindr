@@ -1585,7 +1585,13 @@ ${resume}` }], "", 1200);
                 {/* Per-profile pills */}
                 {profiles.map(p => (
                   <div key={p.id} style={{ display:"flex", alignItems:"center", gap:2 }}>
-                    <button className="pill" onClick={() => setActiveProfile(p.id)} style={{
+                    <button className="pill" onClick={() => {
+  setActiveProfile(p.id);
+  const hasJobs = jobs.some(j => j.profileId === p.id);
+  if (!hasJobs && !isSearching) {
+    searchJobs(p.id);
+  }
+}} style={{
                       padding:"5px 12px", borderRadius:20, fontSize:13, fontWeight:500,
                       background:activeProfile===p.id ? p.color+"28" : "transparent",
                       color:activeProfile===p.id ? p.color : T.textSub,
