@@ -227,7 +227,7 @@ def db_upsert_jobs(jobs, user_id=""):
 
 def db_load_all_jobs(user_id=""):
     db = get_db()
-    rows = db.table("jobs").select("data,status,note").eq("user_id", user_id)\
+    rows = db.table("jobs").select("data,status,note,profile_id").eq("user_id", user_id)\
              .order("saved_at", desc=True).execute()
     out = []
     for r in rows.data:
@@ -235,6 +235,9 @@ def db_load_all_jobs(user_id=""):
             job = r["data"] if isinstance(r["data"], dict) else json.loads(r["data"])
             job["status"] = r["status"]
             job["note"] = r["note"] or ""
+            # ← This is the key fix: restore profileId from DB column
+            if r.get("profile_id"):
+                job["profileId"] = r["profile_id"]
             out.append(job)
         except: pass
     return out
