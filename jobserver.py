@@ -119,15 +119,16 @@ def parse_job(row, location):
 def do_scrape(search_term, location, hours_old, is_remote, results):
     all_jobs = []
     try:
-        boards = ["linkedin", "indeed", "zip_recruiter"]
-        params = dict(
-            site_name=boards,
-            search_term=search_term,
-            location="" if is_remote else location,
-            results_wanted=results,
-            country_indeed="USA",
-            linkedin_fetch_description=True
-        )
+       boards = ["linkedin", "indeed", "google"]
+params = dict(
+    site_name=boards,
+    search_term=search_term,
+    google_search_term=f"{search_term} jobs near {location}",
+    location="" if is_remote else location,
+    results_wanted=results,
+    country_indeed="USA",
+    linkedin_fetch_description=True
+)
         if hours_old: params["hours_old"] = hours_old
         if is_remote: params["is_remote"] = True
         df = scrape_jobs(**params)
