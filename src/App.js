@@ -982,8 +982,11 @@ Return ONLY a JSON array, no markdown. Example: ["Title One","Title Two","Title 
   };
 
   // ─── Filtered view — depends on activeProfile ─────────────────────────────
-  const filtered = sortJobs(jobs.filter(j => {
-    if (activeProfile !== "All" && j.profileId !== activeProfile) return false;
+const filtered = sortJobs(jobs.filter(j => {
+    if (activeProfile !== "All") {
+      if (!j.profileId) return false;
+      if (j.profileId !== activeProfile) return false;
+    }
     if (filterStatus !== "All" && j.status !== filterStatus) return false;
     if (filterWorkType !== "All" && j.workType !== filterWorkType) return false;
     if (searchQuery) {
