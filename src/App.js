@@ -1394,7 +1394,22 @@ ${resume}` }], "", 1200);
         @keyframes slideup{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
         .fade{animation:fadein .25s ease}
         .scanbar{background:linear-gradient(90deg,#4f46e5,#7c3aed,#06b6d4,#4f46e5);background-size:200% 100%;animation:shimmer 1.4s linear infinite}
-        .modal{animation:slideup .22s ease}
+       .modal{animation:slideup .22s ease}
+        @media(max-width:768px){
+          .rf-jobs-layout{flex-direction:column!important;height:auto!important}
+          .rf-jobs-left{width:100%!important;border-right:none!important;border-bottom:1px solid #38384a;max-height:45vh;overflow-y:auto}
+          .rf-jobs-right{flex:1;min-height:55vh;overflow-y:auto}
+          .rf-stats>div{min-width:70px;flex-shrink:0}
+          .rf-stats{overflow-x:auto;-webkit-overflow-scrolling:touch}
+        }
+        @media(hover:none) and (pointer:coarse){
+          .jcard:hover{transform:none!important}
+          .btn:hover{transform:none!important}
+        }
+        @supports(padding:env(safe-area-inset-top)){
+          .rf-header{padding-top:max(12px,env(safe-area-inset-top))}
+          .rf-footer{padding-bottom:max(9px,env(safe-area-inset-bottom))}
+        }
       `}</style>
 
       {/* NOTIFICATION */}
