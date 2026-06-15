@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+jobspy
+pandas
+supabase
+stripe
