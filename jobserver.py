@@ -1,17 +1,26 @@
 #!/usr/local/bin/python3
 """
-Rolefindr Server v8 — Added ZipRecruiter, Glassdoor, USAJobs
+Rolefindr Server v9 — Fixed stale jobs, added date filtering, converted to FastAPI
 """
 
 from jobspy import scrape_jobs
 import pandas as pd
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from datetime import datetime, timedelta
 import json, os, re, html, urllib.request, urllib.parse
-from datetime import datetime
 from supabase import create_client
 import stripe
+from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
 
-PORT = 3002
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def load_env():
     env = {}
@@ -42,17 +51,13 @@ PRICE_YEARLY  = ENV.get("STRIPE_PRICE_YEARLY", "")  or os.environ.get("STRIPE_PR
 USAJOBS_KEY   = ENV.get("USAJOBS_API_KEY", "")
 USAJOBS_EMAIL = ENV.get("USAJOBS_EMAIL", "")
 
+# Max age of jobs to show (days)
+MAX_JOB_AGE_DAYS = 30
+
 def get_db():
     if not SUPABASE_URL or not SUPABASE_KEY:
         raise Exception("Missing SUPABASE_URL or SUPABASE_SERVICE_KEY")
     return create_client(SUPABASE_URL, SUPABASE_KEY)
-
-def init_db():
-    try:
-        get_db().table("jobs").select("id").limit(1).execute()
-        print("  ✅ Supabase connected!")
-    except Exception as e:
-        print(f"  ❌ Supabase connection failed: {e}")
 
 def clean_description(text):
     if not text: return "No description available."
@@ -134,6 +139,8 @@ def do_scrape(search_term, location, hours_old, is_remote, results):
         df = scrape_jobs(**params)
         if df is not None and not df.empty:
             jobs = [parse_job(row, location) for _, row in df.iterrows()]
+            # FIX: filter out jobs older than MAX_JOB_AGE_DAYS immediately after scrape
+            jobs = [j for j in jobs if j["daysAgo"] <= MAX_JOB_AGE_DAYS]
             all_jobs.extend(jobs)
             print(f"    ✅ JobSpy ({search_term[:25]}): {len(jobs)} jobs")
     except Exception as e:
@@ -180,6 +187,11 @@ def scrape_usajobs(search_term, location, is_remote, results=10):
                     posted_label = "Today" if delta==0 else f"{delta}d ago" if delta<7 else f"{delta//7}w ago"
                 else: delta = 999; posted_label = ""
             except: delta = 999; posted_label = ""
+
+            # FIX: skip old USAJobs listings
+            if delta > MAX_JOB_AGE_DAYS:
+                continue
+
             apply_url = pos.get("ApplyURI", ["#"])[0] if pos.get("ApplyURI") else "#"
             jobs.append({
                 "id": str(abs(hash(apply_url + pos.get("PositionTitle","")))),
@@ -227,18 +239,35 @@ def db_upsert_jobs(jobs, user_id=""):
             print(f"    ⚠️  upsert error: {e}")
 
 def db_load_all_jobs(user_id=""):
+    """
+    FIX: Only load jobs from the last MAX_JOB_AGE_DAYS days.
+    This prevents old/expired jobs from flooding the UI on refresh.
+    """
     db = get_db()
-    rows = db.table("jobs").select("data,status,note,profile_id").eq("user_id", user_id)\
-             .order("saved_at", desc=True).execute()
+    cutoff = (datetime.now() - timedelta(days=MAX_JOB_AGE_DAYS)).isoformat()
+    rows = db.table("jobs").select("data,status,note,profile_id") \
+             .eq("user_id", user_id) \
+             .gte("saved_at", cutoff) \
+             .order("saved_at", desc=True) \
+             .limit(200) \
+             .execute()
     out = []
     for r in rows.data:
         try:
             job = r["data"] if isinstance(r["data"], dict) else json.loads(r["data"])
             job["status"] = r["status"]
             job["note"] = r["note"] or ""
-            # ← This is the key fix: restore profileId from DB column
             if r.get("profile_id"):
                 job["profileId"] = r["profile_id"]
+            # Secondary filter: skip jobs older than MAX_JOB_AGE_DAYS by datePosted
+            date_posted = job.get("datePosted", "")
+            if date_posted:
+                try:
+                    dt = datetime.strptime(date_posted, "%Y-%m-%d")
+                    if (datetime.now() - dt).days > MAX_JOB_AGE_DAYS:
+                        continue
+                except:
+                    pass
             out.append(job)
         except: pass
     return out
@@ -303,180 +332,222 @@ def db_import(data, user_id=""):
         except: pass
     return len(jobs), len(profiles)
 
-class JobHandler(BaseHTTPRequestHandler):
-    def log_message(self, *a): pass
+# ─── FastAPI Routes ───────────────────────────────────────────────────────────
 
-    def _cors(self):
-        self.send_header("Access-Control-Allow-Origin","*")
-        self.send_header("Access-Control-Allow-Methods","GET,POST,DELETE,OPTIONS")
-        self.send_header("Access-Control-Allow-Headers","Content-Type,X-User-Id")
+def get_uid(request: Request, body: dict = {}):
+    return request.headers.get("X-User-Id", "") or body.get("userId", "")
 
-    def do_OPTIONS(self):
-        self.send_response(204); self._cors(); self.end_headers()
+@app.get("/ping")
+async def ping():
+    return {"ok": True}
 
-    def do_GET(self):
-        uid = self.headers.get("X-User-Id","")
-        if   self.path == "/db/jobs":               self._respond(200, {"jobs": db_load_all_jobs(uid)})
-        elif self.path == "/db/profiles":            self._respond(200, {"profiles": db_load_profiles(uid)})
-        elif self.path.startswith("/db/timeline/"): self._respond(200, {"timeline": db_get_timeline(self.path.split("/")[-1], uid)})
-        elif self.path == "/db/export":             self._respond(200, db_export(uid))
-        elif self.path == "/ping":                  self._respond(200, {"ok": True})
-        else: self.send_response(404); self.end_headers()
+@app.get("/db/jobs")
+async def get_jobs(request: Request):
+    uid = get_uid(request)
+    return {"jobs": db_load_all_jobs(uid)}
 
-    def do_POST(self):
-        length = int(self.headers.get("Content-Length",0))
-        body = json.loads(self.rfile.read(length)) if length else {}
-        uid = self.headers.get("X-User-Id","") or body.get("userId","")
-        if   self.path == "/search":            self._search(body, uid)
-        elif self.path == "/db/jobs":           db_upsert_jobs(body.get("jobs",[]), uid); self._respond(200,{"saved":len(body.get("jobs",[]))})
-        elif self.path == "/db/status":         db_update_status(body["id"],body["status"],uid); self._respond(200,{"ok":True})
-        elif self.path == "/db/note":           db_update_note(body["id"],body["note"],uid); self._respond(200,{"ok":True})
-        elif self.path == "/db/profiles":       db_save_profiles(body.get("profiles",[]),uid); self._respond(200,{"ok":True})
-        elif self.path == "/db/timeline":       self._respond(200,{"timeline": db_add_timeline(body["jobId"],body["type"],body.get("note",""),body.get("date",""),uid)})
-        elif self.path == "/db/import":         db_import(body,uid); self._respond(200,{"ok":True})
-        elif self.path == "/create-checkout":   self._create_checkout(body)
-        elif self.path == "/webhook":           self._handle_webhook()
-        elif self.path == "/api/claude":        self._handle_claude(body)
-        elif self.path == "/save-job":          self._extension_save(body)
-        else: self.send_response(404); self.end_headers()
+@app.get("/db/profiles")
+async def get_profiles(request: Request):
+    uid = get_uid(request)
+    return {"profiles": db_load_profiles(uid)}
 
-    def do_DELETE(self):
-        uid = self.headers.get("X-User-Id","")
-        parts = self.path.split("/")
-        if   self.path.startswith("/db/jobs/"):     db_delete_job(parts[-1], uid); self._respond(200,{"ok":True})
-        elif self.path.startswith("/db/timeline/"): db_delete_timeline_event(int(parts[-1]), uid); self._respond(200,{"ok":True})
-        else: self.send_response(404); self.end_headers()
+@app.get("/db/timeline/{job_id}")
+async def get_timeline(job_id: str, request: Request):
+    uid = get_uid(request)
+    return {"timeline": db_get_timeline(job_id, uid)}
 
-    def _search(self, params, uid=""):
-        try:
-            location     = params.get("location","Silver Spring, MD")
-            search_term  = params.get("search_term","")
-            search_terms = params.get("search_terms",[])
-            time_filter  = params.get("time_filter","week")
-            results_n    = params.get("results", 10)
-            is_remote    = params.get("remote", False)
-            profile_id   = params.get("profile_id", "")
-            all_terms = list(dict.fromkeys(
-                t.strip() for t in [search_term] + search_terms if t.strip()
-            ))[:2]
-            hours_map = {"24h":24,"3d":72,"week":168,"2w":336,"3w":504,"month":720,"any":None}
-            hours_old = hours_map.get(time_filter, 168)
-            print(f"\n🔍 {all_terms} | {location} | {time_filter} | profile={profile_id}")
-            all_jobs = []
-            for term in all_terms:
-                all_jobs.extend(do_scrape(term, location, hours_old, is_remote, results_n))
-                if USAJOBS_KEY:
-                    all_jobs.extend(scrape_usajobs(term, location, is_remote, results=8))
-            unique = dedupe(all_jobs)
-            unique.sort(key=lambda x: x["daysAgo"])
-            self._respond(200, {"jobs": unique, "total": len(unique), "profile_id": profile_id})
-            print(f"  ✅ {len(unique)} unique ({len(all_jobs)} raw)")
-        except Exception as e:
-            import traceback; traceback.print_exc()
-            self._respond(500, {"error": str(e), "jobs": [], "profile_id": params.get("profile_id","")})
+@app.get("/db/export")
+async def export(request: Request):
+    uid = get_uid(request)
+    return db_export(uid)
 
-    def _create_checkout(self, body):
-        try:
-            plan = body.get("plan", "monthly")
-            user_id = body.get("userId", "")
-            return_url = body.get("returnUrl", "https://rolefindr.vercel.app")
-            price_id = PRICE_YEARLY if plan == "yearly" else PRICE_MONTHLY
-            if not stripe.api_key:
-                self._respond(500, {"error": "Stripe not configured"}); return
-            if not price_id:
-                self._respond(500, {"error": "Price ID not configured"}); return
-            session = stripe.checkout.Session.create(
-                payment_method_types=["card"],
-                line_items=[{"price": price_id, "quantity": 1}],
-                mode="subscription",
-                success_url=f"{return_url}?checkout=success",
-                cancel_url=return_url,
-                metadata={"user_id": user_id},
-                client_reference_id=user_id,
-            )
-            self._respond(200, {"url": session.url})
-        except Exception as e:
-            self._respond(500, {"error": str(e)})
+@app.post("/search")
+async def search(request: Request):
+    body = await request.json()
+    uid = get_uid(request, body)
+    try:
+        location     = body.get("location", "Silver Spring, MD")
+        search_term  = body.get("search_term", "")
+        search_terms = body.get("search_terms", [])
+        time_filter  = body.get("time_filter", "week")
+        results_n    = body.get("results", 10)
+        is_remote    = body.get("remote", False)
+        profile_id   = body.get("profile_id", "")
+        all_terms = list(dict.fromkeys(
+            t.strip() for t in [search_term] + search_terms if t.strip()
+        ))[:2]
+        hours_map = {"24h":24,"3d":72,"week":168,"2w":336,"3w":504,"month":720,"any":None}
+        hours_old = hours_map.get(time_filter, 168)
+        print(f"\n🔍 {all_terms} | {location} | {time_filter} | profile={profile_id}")
+        all_jobs = []
+        for term in all_terms:
+            all_jobs.extend(do_scrape(term, location, hours_old, is_remote, results_n))
+            if USAJOBS_KEY:
+                all_jobs.extend(scrape_usajobs(term, location, is_remote, results=8))
+        unique = dedupe(all_jobs)
+        unique.sort(key=lambda x: x["daysAgo"])
+        print(f"  ✅ {len(unique)} unique ({len(all_jobs)} raw)")
+        return {"jobs": unique, "total": len(unique), "profile_id": profile_id}
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return Response(
+            content=json.dumps({"error": str(e), "jobs": [], "profile_id": body.get("profile_id","")}),
+            status_code=500, media_type="application/json"
+        )
 
-    def _handle_webhook(self):
-        try:
-            length = int(self.headers.get("Content-Length", 0))
-            payload = self.rfile.read(length)
-            event = json.loads(payload)
-            if event["type"] == "checkout.session.completed":
-                session = event["data"]["object"]
-                user_id = session.get("client_reference_id") or session.get("metadata", {}).get("user_id")
-                if user_id:
-                    get_db().table("subscriptions").upsert({
-                        "user_id": user_id, "is_pro": True, "plan": "pro",
-                        "stripe_customer_id": session.get("customer", ""),
-                        "stripe_subscription_id": session.get("subscription", ""),
-                    }).execute()
-            elif event["type"] in ["customer.subscription.deleted", "customer.subscription.paused"]:
-                sub = event["data"]["object"]
-                cust_id = sub.get("customer")
-                if cust_id:
-                    get_db().table("subscriptions").update(
-                        {"is_pro": False, "plan": "free"}
-                    ).eq("stripe_customer_id", cust_id).execute()
-            self._respond(200, {"ok": True})
-        except Exception as e:
-            self._respond(200, {"ok": True})
+@app.post("/db/jobs")
+async def save_jobs(request: Request):
+    body = await request.json()
+    uid = get_uid(request, body)
+    db_upsert_jobs(body.get("jobs", []), uid)
+    return {"saved": len(body.get("jobs", []))}
 
-    def _handle_claude(self, body):
-        api_key = ENV.get("ANTHROPIC_API_KEY", "")
-        if not api_key:
-            self._respond(500, {"error": "Missing ANTHROPIC_API_KEY"}); return
-        try:
-            req = urllib.request.Request(
-                "https://api.anthropic.com/v1/messages",
-                data=json.dumps(body).encode(),
-                headers={
-                    "Content-Type": "application/json",
-                    "x-api-key": api_key,
-                    "anthropic-version": "2023-06-01"
-                },
-                method="POST"
-            )
-            with urllib.request.urlopen(req) as r:
-                self._respond(200, json.loads(r.read()))
-        except Exception as e:
-            self._respond(500, {"error": str(e)})
+@app.post("/db/status")
+async def update_status(request: Request):
+    body = await request.json()
+    uid = get_uid(request, body)
+    db_update_status(body["id"], body["status"], uid)
+    return {"ok": True}
 
-    def _extension_save(self, body):
-        job = {
-            "id": str(abs(hash(body.get("url","")+body.get("title","")))),
-            "title": body.get("title","Untitled"),
-            "company": body.get("company","Unknown"),
-            "location": body.get("location",""),
-            "salary": "Not listed", "salaryMax": 0,
-            "source": "Extension",
-            "workType": body.get("workType","Onsite"),
-            "description": clean_description(body.get("description",""))[:2000],
-            "url": body.get("url","#"),
-            "datePosted": datetime.now().strftime("%Y-%m-%d"),
-            "postedLabel": "Today", "daysAgo": 0, "status": "Saved",
-            "remote": body.get("workType","")=="Remote",
-            "profileId": body.get("profileId",""),
-        }
-        db_upsert_jobs([job])
-        self._respond(200, {"ok":True,"job":job})
+@app.post("/db/note")
+async def update_note(request: Request):
+    body = await request.json()
+    uid = get_uid(request, body)
+    db_update_note(body["id"], body["note"], uid)
+    return {"ok": True}
 
-    def _respond(self, code, data):
-        body = json.dumps(data).encode()
-        self.send_response(code); self._cors()
-        self.send_header("Content-Type","application/json")
-        self.send_header("Content-Length",len(body))
-        self.end_headers(); self.wfile.write(body)
+@app.post("/db/profiles")
+async def save_profiles(request: Request):
+    body = await request.json()
+    uid = get_uid(request, body)
+    db_save_profiles(body.get("profiles", []), uid)
+    return {"ok": True}
+
+@app.post("/db/timeline")
+async def add_timeline(request: Request):
+    body = await request.json()
+    uid = get_uid(request, body)
+    tl = db_add_timeline(body["jobId"], body["type"], body.get("note",""), body.get("date",""), uid)
+    return {"timeline": tl}
+
+@app.post("/db/import")
+async def import_data(request: Request):
+    body = await request.json()
+    uid = get_uid(request, body)
+    db_import(body, uid)
+    return {"ok": True}
+
+@app.post("/create-checkout")
+async def create_checkout(request: Request):
+    body = await request.json()
+    try:
+        plan = body.get("plan", "monthly")
+        user_id = body.get("userId", "")
+        return_url = body.get("returnUrl", "https://rolefindr.vercel.app")
+        price_id = PRICE_YEARLY if plan == "yearly" else PRICE_MONTHLY
+        if not stripe.api_key:
+            return Response(content=json.dumps({"error": "Stripe not configured"}), status_code=500, media_type="application/json")
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{"price": price_id, "quantity": 1}],
+            mode="subscription",
+            success_url=f"{return_url}?checkout=success",
+            cancel_url=return_url,
+            metadata={"user_id": user_id},
+            client_reference_id=user_id,
+        )
+        return {"url": session.url}
+    except Exception as e:
+        return Response(content=json.dumps({"error": str(e)}), status_code=500, media_type="application/json")
+
+@app.post("/webhook")
+async def webhook(request: Request):
+    try:
+        body = await request.json()
+        if body["type"] == "checkout.session.completed":
+            session = body["data"]["object"]
+            user_id = session.get("client_reference_id") or session.get("metadata", {}).get("user_id")
+            if user_id:
+                get_db().table("subscriptions").upsert({
+                    "user_id": user_id, "is_pro": True, "plan": "pro",
+                    "stripe_customer_id": session.get("customer", ""),
+                    "stripe_subscription_id": session.get("subscription", ""),
+                }).execute()
+        elif body["type"] in ["customer.subscription.deleted", "customer.subscription.paused"]:
+            sub = body["data"]["object"]
+            cust_id = sub.get("customer")
+            if cust_id:
+                get_db().table("subscriptions").update(
+                    {"is_pro": False, "plan": "free"}
+                ).eq("stripe_customer_id", cust_id).execute()
+    except: pass
+    return {"ok": True}
+
+@app.post("/api/claude")
+async def claude_proxy(request: Request):
+    body = await request.json()
+    api_key = ENV.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return Response(content=json.dumps({"error": "Missing ANTHROPIC_API_KEY"}), status_code=500, media_type="application/json")
+    try:
+        req = urllib.request.Request(
+            "https://api.anthropic.com/v1/messages",
+            data=json.dumps(body).encode(),
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01"
+            },
+            method="POST"
+        )
+        with urllib.request.urlopen(req) as r:
+            return json.loads(r.read())
+    except Exception as e:
+        return Response(content=json.dumps({"error": str(e)}), status_code=500, media_type="application/json")
+
+@app.post("/save-job")
+async def extension_save(request: Request):
+    body = await request.json()
+    job = {
+        "id": str(abs(hash(body.get("url","")+body.get("title","")))),
+        "title": body.get("title","Untitled"),
+        "company": body.get("company","Unknown"),
+        "location": body.get("location",""),
+        "salary": "Not listed", "salaryMax": 0,
+        "source": "Extension",
+        "workType": body.get("workType","Onsite"),
+        "description": clean_description(body.get("description",""))[:2000],
+        "url": body.get("url","#"),
+        "datePosted": datetime.now().strftime("%Y-%m-%d"),
+        "postedLabel": "Today", "daysAgo": 0, "status": "Saved",
+        "remote": body.get("workType","")=="Remote",
+        "profileId": body.get("profileId",""),
+    }
+    db_upsert_jobs([job])
+    return {"ok": True, "job": job}
+
+@app.delete("/db/jobs/{job_id}")
+async def delete_job(job_id: str, request: Request):
+    uid = get_uid(request)
+    db_delete_job(job_id, uid)
+    return {"ok": True}
+
+@app.delete("/db/timeline/{ev_id}")
+async def delete_timeline(ev_id: int, request: Request):
+    uid = get_uid(request)
+    db_delete_timeline_event(ev_id, uid)
+    return {"ok": True}
 
 if __name__ == "__main__":
-    init_db()
+    try:
+        get_db().table("jobs").select("id").limit(1).execute()
+        print("  ✅ Supabase connected!")
+    except Exception as e:
+        print(f"  ❌ Supabase connection failed: {e}")
     port = int(os.environ.get("PORT", 3002))
     print("="*60)
-    print("  🚀 Rolefindr Server v8")
+    print("  🚀 Rolefindr Server v9")
     print(f"  http://0.0.0.0:{port}")
-    print(f"  Job boards: LinkedIn · Indeed · ZipRecruiter")
-    print(f"  USAJobs: {'✅ configured' if USAJOBS_KEY else '⚠️  optional - add key to enable'}")
+    print(f"  USAJobs: {'✅' if USAJOBS_KEY else '⚠️  optional'}")
     print("="*60)
-    try: HTTPServer(("0.0.0.0", port), JobHandler).serve_forever()
-    except KeyboardInterrupt: print("\n👋 Stopped.")
+    uvicorn.run(app, host="0.0.0.0", port=port)
