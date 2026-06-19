@@ -1,6 +1,6 @@
 fastapi
 uvicorn
-jobspy
+python-jobspy
 pandas
 supabase
 stripe
