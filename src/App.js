@@ -884,7 +884,7 @@ Return ONLY a JSON array, no markdown. Example: ["Title One","Title Two","Title 
   // ─── Job Search ───────────────────────────────────────────────────────────
   const fetchForProfile = async (profile, loc, tf) => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || "http://localhost:3002"}/search`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || "https://rolefindr-production.up.railway.app"}/search`, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
           search_term: profile.searchTerms[0] || profile.title,
