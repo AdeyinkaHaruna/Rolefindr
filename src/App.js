@@ -126,7 +126,7 @@ async function callClaude(messages, system = "", maxTokens = 1000) {
   const controller = new AbortController();
  const timeout = setTimeout(() => controller.abort(), 90000);
   try {
-    const res = await fetch("https://rolefindr.onrender.com/api/claude", {
+    const res = await fetch("https://rolefindr-production.up.railway.app/api/claude", {
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify(body),
@@ -166,7 +166,7 @@ async function parseResumeFile(file) {
               { type:"text", text:"Extract all text from this resume. Output ONLY the plain text." }
             ]}]
           };
-          const resp = await fetch("https://rolefindr.onrender.com/api/claude", {
+          const resp = await fetch("https://rolefindr-production.up.railway.app/api/claude", {
             method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)
           });
           const data = await resp.json();
@@ -558,7 +558,7 @@ function AuthModal({ mode, onClose, onSuccess, darkMode }) {
 function PaywallModal({ onClose, darkMode, userId }) {
   const T = darkMode ? DARK : LIGHT;
   const [loading, setLoading] = useState(null);
-  const DB = process.env.REACT_APP_API_URL || "https://rolefindr.onrender.com";
+  const DB = process.env.REACT_APP_API_URL || "https://rolefindr-production.up.railway.app";
 
   const checkout = async (plan) => {
     setLoading(plan);
@@ -757,7 +757,7 @@ export default function Rolefindr() {
   const TL_ICONS = { Applied:"📤", "Phone Screen":"📞", Interview:"🗓️", "Follow Up":"🔔", Offer:"🎉", Rejected:"❌", Note:"📝" };
 
   // ── DB helpers ────────────────────────────────────────────────────────────
-  const DB = process.env.REACT_APP_API_URL || "https://rolefindr.onrender.com";
+  const DB = process.env.REACT_APP_API_URL || "https://rolefindr-production.up.railway.app";
 
   const dbHeaders = () => ({
     "Content-Type": "application/json",
